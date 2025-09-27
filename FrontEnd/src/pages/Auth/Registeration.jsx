@@ -73,6 +73,7 @@ function Registeration() {
                         label="Full Name"
                         placeholder="Team 2"
                         type="text"
+                        error={error}
                     />
                     <Input
                         value={Location}
@@ -80,6 +81,7 @@ function Registeration() {
                         label="Location"
                         placeholder="Trichy"
                         type="text"
+                        error={error}
                     />
                     <Input
                         value={email}
@@ -87,6 +89,7 @@ function Registeration() {
                         label="Email Address"
                         placeholder="team2@gmail.com"
                         type="text"
+                        error={error}
                     />
                     
                     <Input
@@ -95,6 +98,7 @@ function Registeration() {
                         label="Password"
                         placeholder="Min 8 characters"
                         type="password"
+                        error={error}
                     />
 
                     {error && <p className="text-red-500 text-xs">{error}</p>}
