@@ -1,7 +1,5 @@
 package infosys.backend.model;
 
-
-
 import infosys.backend.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -28,5 +26,12 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    // Human-readable location (optional)
     private String location;
+
+    // Exact coordinates for map-based search
+    private Double latitude;
+
+    private Double longitude;
 }
+

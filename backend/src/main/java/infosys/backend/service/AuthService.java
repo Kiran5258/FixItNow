@@ -17,11 +17,12 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    // Register: save user only
-    public void register(RegisterRequest request) {
+    // Register: save user only (Customer/Admin)
+    public User register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
         }
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -29,10 +30,18 @@ public class AuthService {
         user.setRole(request.getRole());
         user.setLocation(request.getLocation());
 
-        userRepository.save(user);
+        // ✅ Optional latitude and longitude
+        if (request.getLatitude() != null) {
+            user.setLatitude(request.getLatitude());
+        }
+        if (request.getLongitude() != null) {
+            user.setLongitude(request.getLongitude());
+        }
+
+        return userRepository.save(user);
     }
 
-    // Login: validate and return token
+    // Login: validate and return JWT token
     public String login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid credentials"));

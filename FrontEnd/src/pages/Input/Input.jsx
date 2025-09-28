@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { FaRegEye, FaRegEyeSlash } from 'react-icons/fa6';
 
-export default function Input({ value, onChange, placeholder, label, type }) {
+export default function Input({ value, onChange, placeholder, label, type,error}) {
   const [showPassword, setShowPassword] = useState(false);
-
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -11,7 +10,7 @@ export default function Input({ value, onChange, placeholder, label, type }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-[13px] text-slate-600">{label}</label>
-      <div className="w-full border border-slate-300 rounded px-3 py-2 flex items-center justify-between">
+      <div className={`w-full border  rounded px-3 py-2 flex items-center justify-between ${error ? "border-slate-300":"border-red-500"}`}>
         <input
           type={type === 'password' ? (showPassword ? 'text' : 'password') : type}
           placeholder={placeholder}
