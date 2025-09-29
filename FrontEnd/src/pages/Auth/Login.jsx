@@ -1,108 +1,118 @@
-import React, { useContext, useState } from 'react';
-import Input from '../Input/Input';
-import { useNavigate, Link } from 'react-router-dom';
-import { validateEmail } from '../../utils/helper';
-import { API_PATHS } from '../../utils/apiPath';
-import { userContext } from '../../content/Userprovider';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  HiOutlineMail,
+  HiOutlineLockClosed,
+  HiOutlineEye,
+  HiOutlineEyeOff,
+  HiLogin,
+} from 'react-icons/hi';
+import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from 'react-icons/fa';
 
-function Registeration() {
-    const [fullname, setFullname] = useState("");
-    const [email, setEmail] = useState("");
-    const [Location, setLocation] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const navigate = useNavigate();
-    //   const { updateuser } = useContext(userContext);
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+    setError('');
+    console.log('Logging in with:', { email, password });
+  };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+  return (
+    <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden">
+      {/* Blurred Background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
+        style={{ backgroundImage: "url('/tools.jpeg')" }}
+      ></div>
 
-        if (!fullname) {
-            setError("Please enter your name");
-            return;
-        }
-        if (!validateEmail(email)) {
-            setError("Please enter a valid email address");
-            return;
-        }
-        if (!password) {
-            setError("Please enter a valid Password");
-            return;
-        }
-        setError("");
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-black/40"></div>
 
-        // try {
-        //   const response = await axiosInstance.post(API_PATHS.AUTH.REGISTER, {
-        //     fullname,
-        //     email,
-        //     password,
-        //     profilepic
-        //   });
-        //   const { token, user } = response.data;
-        //   if (token) {
-        //     localStorage.setItem("token", token);
-        //     updateUser(user);
-        //     navigate("/dashboard");
-        //   }
-        // } catch (err) {
-        //   if (err.response && err.response.data.message) {
-        //     setError(err.response.data.message);
-        //   } else {
-        //     setError("Something went wrong. Please try again.");
-        //   }
-        // }
-    };
-
-    return (
-        <div className="min-h-screen flex flex-col space-y-3 items-center justify-center bg-gradient-to-r from-blue-100 via-indigo-200 to-purple-200">
-            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-                FixItNow
-            </h1>
-
-            <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8 border-t-4 border-indigo-500">
-                <h3 className="text-2xl text-indigo-700 font-bold text-center">Join FixItNow as a Servicer</h3>
-                <p className="text-sm text-gray-600 text-center mt-2 mb-6">
-                    Grow your service business with us. Enter your details below.
-                </p>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <Input
-                        value={email}
-                        onChange={({ target }) => setEmail(target.value)}
-                        label="Email Address"
-                        placeholder="team2@gmail.com"
-                        type="text"
-                    />
-                    
-                    <Input
-                        value={password}
-                        onChange={({ target }) => setPassword(target.value)}
-                        label="Password"
-                        placeholder="Min 8 characters"
-                        type="password"
-                    />
-
-                    {error && <p className="text-red-500 text-xs">{error}</p>}
-
-                    <button
-                        type="submit"
-                        className="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition"
-                    >
-                        Sign Up
-                    </button>
-
-                    <p className="text-center text-gray-700 text-sm mt-4">
-                        Already have an account?{" "}
-                        <Link className="font-medium text-indigo-600 underline" to={"/register"}>
-                            register
-                        </Link>
-                    </p>
-                </form>
-            </div>
+      {/* Combined Logo + FixItNow Text */}
+      <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
+        <div className="relative w-10 h-10">
+          <FaHome className="text-white w-full h-full" />
+          <FaWrench className="text-black w-5 h-5 absolute bottom-0 right-0" />
         </div>
+        <span className="text-white font-bold text-xl">FixItNow</span>
+      </div>
 
-    );
+      {/* Tool Icons Row */}
+      <div className="relative z-10 flex space-x-6 mb-8 text-white text-3xl">
+        <FaHome title="Home Repair" className="hover:text-indigo-400 transition" />
+        <FaWrench title="Plumbing" className="hover:text-indigo-400 transition" />
+        <FaTools title="General Services" className="hover:text-indigo-400 transition" />
+        <FaBolt title="Electrical" className="hover:text-indigo-400 transition" />
+        <FaShower title="Bathroom Fixes" className="hover:text-indigo-400 transition" />
+      </div>
+
+      {/* Form */}
+      <div className="relative z-10 w-full max-w-md flex flex-col items-center px-4">
+        <h1 className="text-5xl font-bold text-white mb-6">Welcome Back</h1>
+        <p className="text-white text-lg mb-10 text-center">
+          Log in to access your FixItNow account
+        </p>
+
+        <form className="w-full flex flex-col space-y-6" onSubmit={handleLogin}>
+          {/* Email Input */}
+          <div className="relative">
+            <HiOutlineMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full pl-10 px-4 py-3 rounded-md border border-white bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* Password Input */}
+          <div className="relative">
+            <HiOutlineLockClosed className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full pr-10 pl-10 px-4 py-3 rounded-md border border-white bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white text-xl"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+            </button>
+          </div>
+
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+
+          {/* Gradient Login Button */}
+          <button
+            type="submit"
+            className="w-full py-3 flex items-center justify-center space-x-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
+          >
+            <HiLogin className="text-xl" />
+            <span>Log In</span>
+          </button>
+        </form>
+
+        <p className="text-white text-sm mt-6">
+          Don't have an account?{' '}
+          <Link to="/register" className="underline font-medium">
+            Sign Up
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
 }
-
-export default Registeration;
