@@ -2,7 +2,6 @@ package infosys.backend.controller;
 
 import infosys.backend.dto.*;
 import infosys.backend.model.User;
-import infosys.backend.model.ProviderProfile;
 import infosys.backend.service.AuthService;
 import infosys.backend.service.ProviderService;
 import infosys.backend.service.UserService;
@@ -22,7 +21,6 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
         if (request.getRole() != null && request.getRole().name().equals("PROVIDER")) {
-            // Convert RegisterRequest → ProviderRegistrationRequest
             ProviderRegistrationRequest providerRequest = ProviderRegistrationRequest.builder()
                     .name(request.getName())
                     .email(request.getEmail())
@@ -37,27 +35,18 @@ public class AuthController {
                     .build();
 
             providerService.registerProvider(providerRequest);
-
         } else {
-            // CUSTOMER / ADMIN registration → creates User only
-            authService.register(request);
+            authService.register(request); // CUSTOMER or ADMIN
         }
 
-        // Return only a success message
         return ResponseEntity.ok(new AuthResponse("Registered successfully"));
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
-        // Generate JWT token
         String token = authService.login(request);
-
-        // Fetch user to get role
-        User user = userService.findByEmail(request.getEmail()); // make sure AuthService has this method
-        String role = user.getRole().toString();
-
-        // Return token + role
-        AuthResponse response = new AuthResponse(token, role);
-        return ResponseEntity.ok(response);
+        User user = userService.findByEmail(request.getEmail());
+        String role = user.getRole().name();
+        return ResponseEntity.ok(new AuthResponse(token, role));
     }
 }
