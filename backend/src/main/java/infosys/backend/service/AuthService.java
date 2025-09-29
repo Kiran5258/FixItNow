@@ -30,14 +30,6 @@ public class AuthService {
         user.setRole(request.getRole());
         user.setLocation(request.getLocation());
 
-        // Optional latitude and longitude
-        if (request.getLatitude() != null) {
-            user.setLatitude(request.getLatitude());
-        }
-        if (request.getLongitude() != null) {
-            user.setLongitude(request.getLongitude());
-        }
-
         return userRepository.save(user);
     }
 
@@ -50,7 +42,6 @@ public class AuthService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        // ✅ Generate token including role
         return jwtUtil.generateToken(user.getEmail(), user.getRole().name());
     }
 }

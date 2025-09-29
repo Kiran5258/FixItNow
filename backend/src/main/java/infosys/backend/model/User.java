@@ -1,5 +1,9 @@
 package infosys.backend.model;
 
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+
 import infosys.backend.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,12 +30,11 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    // Human-readable location (optional)
+    // Human-readable location only
     private String location;
 
-    // Exact coordinates for map-based search
-    private Double latitude;
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
-    private Double longitude;
 }
-
