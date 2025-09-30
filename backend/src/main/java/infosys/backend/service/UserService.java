@@ -39,7 +39,6 @@ public class UserService {
         existing.setEmail(updatedUser.getEmail());
         existing.setLocation(updatedUser.getLocation());
         existing.setRole(updatedUser.getRole());
-        // ⚠️ update password only if provided
         if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank()) {
             existing.setPassword(updatedUser.getPassword());
         }

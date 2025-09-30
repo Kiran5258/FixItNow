@@ -13,15 +13,14 @@ import java.util.Date;
 public class JwtUtil {
 
     private final String secret = "fixitnowSecretKey123fixitnowSecretKey123"; 
-    // must be at least 32 chars for HS256
     private final long expiration = 3600000; // 1 hour
-
     private final Key key = Keys.hmacShaKeyFor(secret.getBytes());
 
-    // Generate JWT
-    public String generateToken(String email) {
+    // Generate JWT with role
+    public String generateToken(String email, String role) {
         return Jwts.builder()
                 .setSubject(email)
+                .claim("role", role) // include role in token
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -33,20 +32,23 @@ public class JwtUtil {
         return getClaims(token).getSubject();
     }
 
+    // Extract role
+    public String extractRole(String token) {
+        return getClaims(token).get("role", String.class);
+    }
+
     // Validate token
     public boolean validateToken(String token, String email) {
         return extractUsername(token).equals(email) && !isTokenExpired(token);
     }
 
-    // Check expiration
     private boolean isTokenExpired(String token) {
         return getClaims(token).getExpiration().before(new Date());
     }
 
-    // Extract claims
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(key)   // ✅ fixed
+                .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

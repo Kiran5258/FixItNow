@@ -32,7 +32,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = null;
         String email = null;
 
-        // 🔹 Extract token
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
             try {
@@ -42,7 +41,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
 
-        // 🔹 Validate token & set authentication
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             User user = userRepository.findByEmail(email).orElse(null);
 
@@ -51,9 +49,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(
                                 user,
                                 null,
-                                List.of(() -> "ROLE_" + user.getRole().name()) // map DB role to authority
+                                List.of(() -> "ROLE_" + user.getRole().name())
                         );
-
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
