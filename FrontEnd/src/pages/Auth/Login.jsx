@@ -1,13 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  HiOutlineMail,
-  HiOutlineLockClosed,
-  HiOutlineEye,
-  HiOutlineEyeOff,
-  HiLogin,
-} from 'react-icons/hi';
+import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiLogin } from 'react-icons/hi';
 import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from 'react-icons/fa';
+import { userContext } from '../../content/Userprovider';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -16,14 +11,48 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const { UpdateUser } = useContext(userContext);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
+
     if (!email || !password) {
       setError('Please fill in all fields');
       return;
     }
+
     setError('');
-    console.log('Logging in with:', { email, password });
+
+    try {
+      // TODO: Replace with real API call
+      
+      // const response = await axios.post('/api/login', { email, password });
+      // const loggedInUser = response.data;
+
+      // MOCK login response for now
+      const loggedInUser = {
+        id: 2,
+        "name": "Bob Smith",
+        "email": "bob@example.com",
+        "password": "bob123",
+        "role": "PROVIDER",
+        "hasProfile": false
+
+      };
+
+      // Save user info globally
+      UpdateUser(loggedInUser);
+
+      // Redirect based on role & profile completion
+      if (loggedInUser.role === "PROVIDER" && !loggedInUser.hasProfile) {
+        navigate("/provider-profile");
+      } else {
+        navigate("/"); // Customer/Admin or provider with profile → dashboard
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Login failed. Please check your credentials.');
+    }
   };
 
   return (
@@ -33,11 +62,9 @@ export default function Login() {
         className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
         style={{ backgroundImage: "url('/tools.jpeg')" }}
       ></div>
-
-      {/* Dark Overlay */}
       <div className="absolute inset-0 bg-black/40"></div>
 
-      {/* Combined Logo + FixItNow Text */}
+      {/* Logo */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
         <div className="relative w-10 h-10">
           <FaHome className="text-white w-full h-full" />
@@ -46,7 +73,7 @@ export default function Login() {
         <span className="text-white font-bold text-xl">FixItNow</span>
       </div>
 
-      {/* Tool Icons Row */}
+      {/* Tools Row */}
       <div className="relative z-10 flex space-x-6 mb-8 text-white text-3xl">
         <FaHome title="Home Repair" className="hover:text-indigo-400 transition" />
         <FaWrench title="Plumbing" className="hover:text-indigo-400 transition" />
@@ -63,7 +90,6 @@ export default function Login() {
         </p>
 
         <form className="w-full flex flex-col space-y-6" onSubmit={handleLogin}>
-          {/* Email Input */}
           <div className="relative">
             <HiOutlineMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
@@ -75,7 +101,6 @@ export default function Login() {
             />
           </div>
 
-          {/* Password Input */}
           <div className="relative">
             <HiOutlineLockClosed className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
@@ -96,7 +121,6 @@ export default function Login() {
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
-          {/* Gradient Login Button */}
           <button
             type="submit"
             className="w-full py-3 flex items-center justify-center space-x-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"

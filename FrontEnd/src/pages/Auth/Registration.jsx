@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   HiOutlineMail,
   HiOutlineLockClosed,
@@ -7,27 +7,61 @@ import {
   HiOutlineLocationMarker,
   HiOutlineEye,
   HiOutlineEyeOff,
-} from 'react-icons/hi';
-import { FaHome, FaWrench } from 'react-icons/fa';
+} from "react-icons/hi";
+import { FaHome, FaWrench } from "react-icons/fa";
 
-export default function Registeration() {
-  const [fullname, setFullname] = useState('');
-  const [location, setLocation] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function Registration() {
+  const [fullname, setFullname] = useState("");
+  const [location, setLocation] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("CUSTOMER");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleRegister = (e) => {
-    e.preventDefault();
-    if (!fullname || !email || !password) {
-      setError('Please fill in all required fields');
-      return;
+  // Get current location
+  const handleUseCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setLocation(`Lat: ${latitude}, Lng: ${longitude}`);
+        },
+        (err) => {
+          console.error(err);
+          alert("Unable to fetch location. Please enter manually.");
+        }
+      );
+    } else {
+      alert("Geolocation not supported by your browser.");
     }
-    setError('');
-    console.log('Registering with:', { fullname, location, email, password });
   };
+
+  const handleRegister = (e) => {
+  e.preventDefault();
+  if (!fullname || !email || !password) {
+    setError("Please fill in all required fields");
+    return;
+  }
+  setError("");
+
+  const formData = {
+    fullname,
+    email,
+    password,
+    role,
+    location,
+  };
+
+  //console.log("Registering with:", formData);
+
+  // send to backend API
+
+  // After registration, always redirect to login
+  navigate("/login");
+};
+
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden">
@@ -40,7 +74,7 @@ export default function Registeration() {
       {/* Dark Overlay */}
       <div className="absolute inset-0 bg-black/40"></div>
 
-      {/* Combined Logo + Text Top-Left */}
+      {/* Logo Top-Left */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
         <div className="relative w-10 h-10">
           <FaHome className="text-white w-full h-full" />
@@ -50,14 +84,14 @@ export default function Registeration() {
       </div>
 
       {/* Form */}
-      <div className="relative z-10 w-full max-w-md flex flex-col items-center px-4">
-        <h1 className="text-5xl font-bold text-white mb-6">Join FixItNow</h1>
-        <p className="text-white text-lg mb-10 text-center">
-          Grow your service business with us. Enter your details below.
+      <div className="relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto flex flex-col items-center px-4 py-6 bg-black/30 rounded-lg backdrop-blur-lg">
+        <h1 className="text-4xl font-bold text-white mb-4">Join FixItNow</h1>
+        <p className="text-white text-lg mb-6 text-center">
+          Create your account below to get started.
         </p>
 
         <form className="w-full flex flex-col space-y-6" onSubmit={handleRegister}>
-          {/* Full Name Input */}
+          {/* Full Name */}
           <div className="relative">
             <HiOutlineUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
@@ -69,19 +103,7 @@ export default function Registeration() {
             />
           </div>
 
-          {/* Location Input */}
-          <div className="relative">
-            <HiOutlineLocationMarker className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
-            <input
-              type="text"
-              placeholder="Location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full pl-10 px-4 py-3 rounded-md border border-white bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Email Input */}
+          {/* Email */}
           <div className="relative">
             <HiOutlineMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
@@ -93,11 +115,11 @@ export default function Registeration() {
             />
           </div>
 
-          {/* Password Input */}
+          {/* Password */}
           <div className="relative">
             <HiOutlineLockClosed className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -112,9 +134,43 @@ export default function Registeration() {
             </button>
           </div>
 
+          {/* Location */}
+          <div className="relative flex items-center space-x-2">
+            <div className="relative flex-grow">
+              <HiOutlineLocationMarker className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
+              <input
+                type="text"
+                placeholder="Location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full pl-10 px-4 py-3 rounded-md border border-white bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              className="px-3 py-2 text-sm bg-indigo-500 hover:bg-indigo-600 rounded-md text-white"
+            >
+              Use Current
+            </button>
+          </div>
+
+          {/* Role Dropdown */}
+          <div className="relative">
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option className="bg-black text-white" value="CUSTOMER">Customer</option>
+              <option className="bg-black text-white" value="PROVIDER">Provider</option>
+              <option className="bg-black text-white" value="ADMIN">Admin</option>
+            </select>
+          </div>
+
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
-          {/* Gradient Sign Up Button */}
+          {/* Button */}
           <button
             type="submit"
             className="w-full py-3 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
@@ -124,7 +180,7 @@ export default function Registeration() {
         </form>
 
         <p className="text-white text-sm mt-6">
-          Already have an account?{' '}
+          Already have an account?{" "}
           <Link to="/login" className="underline font-medium">
             Log In
           </Link>
