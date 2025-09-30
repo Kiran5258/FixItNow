@@ -10,12 +10,11 @@ public class RegisterRequest {
     private String password;
     private Role role;          // CUSTOMER / PROVIDER / ADMIN
     private String location;    // human-readable address
-    private Double latitude;    // map coordinates
-    private Double longitude;
 
     // Provider-specific fields
-    private String category;    
+    private String category;
     private String subcategory;
-    private String skills;
-    private String serviceArea;
+    private String description;
+    private Double price;
+    private String availability;
 }

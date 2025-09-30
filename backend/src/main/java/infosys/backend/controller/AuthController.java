@@ -1,6 +1,7 @@
 package infosys.backend.controller;
 
 import infosys.backend.dto.*;
+import infosys.backend.enums.Role;
 import infosys.backend.model.User;
 import infosys.backend.service.AuthService;
 import infosys.backend.service.ServiceProviderService;
@@ -23,29 +24,21 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
 
-        // If provider, register user first, then optionally create initial services
-        if (request.getRole() != null && request.getRole().name().equals("PROVIDER")) {
-            // 1️⃣ Register provider as a user
-            User providerUser = authService.register(request);
+        // 1️⃣ Create user
+        User registeredUser = authService.register(request);
 
-            // 2️⃣ Optional: create initial service for provider if category is provided
-            if (request.getCategory() != null) {
-                ServiceRequest serviceRequest = ServiceRequest.builder()
-                        .providerId(providerUser.getId())
-                        .category(request.getCategory())
-                        .subcategory(request.getSubcategory())
-                        .description(request.getSkills())   // use skills as description initially
-                        .price(BigDecimal.ZERO)             // ✅ default price as BigDecimal
-                        .availability("Available")          // default availability
-                        .location(providerUser.getLocation())
-                        .build();
+        // 2️⃣ If provider, create service
+        if (registeredUser.getRole() == Role.PROVIDER) {
+            ServiceRequest serviceRequest = ServiceRequest.builder()
+                    .category(request.getCategory())
+                    .subcategory(request.getSubcategory())
+                    .description(request.getDescription())
+                    .price(request.getPrice() != null ? BigDecimal.valueOf(request.getPrice()) : BigDecimal.ZERO)
+                    .availability(request.getAvailability() != null ? request.getAvailability() : "Available")
+                    .location(registeredUser.getLocation())
+                    .build();
 
-                serviceProviderService.createService(serviceRequest);
-            }
-
-        } else {
-            // Register customer or admin
-            authService.register(request);
+            serviceProviderService.createService(serviceRequest, registeredUser.getEmail());
         }
 
         return ResponseEntity.ok(new AuthResponse("Registered successfully"));

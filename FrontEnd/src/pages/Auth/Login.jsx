@@ -1,14 +1,22 @@
-import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiLogin } from 'react-icons/hi';
-import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from 'react-icons/fa';
-import { userContext } from '../../content/Userprovider';
+import React, { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  HiOutlineMail,
+  HiOutlineLockClosed,
+  HiOutlineEye,
+  HiOutlineEyeOff,
+  HiLogin,
+} from "react-icons/hi";
+import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from "react-icons/fa";
+import { userContext } from "../../content/Userprovider";
+import { login } from "../../services/api"; // ✅ import API
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const { UpdateUser } = useContext(userContext);
@@ -17,41 +25,48 @@ export default function Login() {
     e.preventDefault();
 
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
-    setError('');
+    setError("");
+    setLoading(true);
 
     try {
-      // TODO: Replace with real API call
-      
-      // const response = await axios.post('/api/login', { email, password });
-      // const loggedInUser = response.data;
+      // 🔑 Call backend login API
+      const res = await login({ email, password });
 
-      // MOCK login response for now
+      // Backend returns { token, role }
+      const { token, role } = res.data;
+
+      // Save token for authenticated requests
+      localStorage.setItem("token", token);
+
+      // Build logged-in user object
       const loggedInUser = {
-        id: 2,
-        "name": "Bob Smith",
-        "email": "bob@example.com",
-        "password": "bob123",
-        "role": "PROVIDER",
-        "hasProfile": false
-
+        email,
+        role,
+        hasProfile: role === "PROVIDER" ? false : true, // assume provider profile incomplete until they add services
       };
 
-      // Save user info globally
+      // Save in global context
       UpdateUser(loggedInUser);
 
-      // Redirect based on role & profile completion
-      if (loggedInUser.role === "PROVIDER" && !loggedInUser.hasProfile) {
+      // ✅ Redirect logic
+      if (role === "PROVIDER" && !loggedInUser.hasProfile) {
         navigate("/provider-profile");
+      } else if (role === "ADMIN") {
+        navigate("/");
+      } else if (role === "CUSTOMER") {
+        navigate("/");
       } else {
-        navigate("/"); // Customer/Admin or provider with profile → dashboard
+        navigate("/"); // fallback → home/dashboard
       }
     } catch (err) {
-      console.error(err);
-      setError('Login failed. Please check your credentials.');
+      console.error("Login failed:", err);
+      setError("Invalid credentials. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -90,6 +105,7 @@ export default function Login() {
         </p>
 
         <form className="w-full flex flex-col space-y-6" onSubmit={handleLogin}>
+          {/* Email */}
           <div className="relative">
             <HiOutlineMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
@@ -101,10 +117,11 @@ export default function Login() {
             />
           </div>
 
+          {/* Password */}
           <div className="relative">
             <HiOutlineLockClosed className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -121,17 +138,19 @@ export default function Login() {
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
+          {/* Submit Button */}
           <button
             type="submit"
+            disabled={loading}
             className="w-full py-3 flex items-center justify-center space-x-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
           >
             <HiLogin className="text-xl" />
-            <span>Log In</span>
+            <span>{loading ? "Logging In..." : "Log In"}</span>
           </button>
         </form>
 
         <p className="text-white text-sm mt-6">
-          Don't have an account?{' '}
+          Don't have an account?{" "}
           <Link to="/register" className="underline font-medium">
             Sign Up
           </Link>

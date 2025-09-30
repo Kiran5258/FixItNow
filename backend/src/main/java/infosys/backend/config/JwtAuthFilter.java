@@ -45,13 +45,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             User user = userRepository.findByEmail(email).orElse(null);
 
             if (user != null && jwtUtil.validateToken(token, user.getEmail())) {
+                // ✅ Normalize role to uppercase and add ROLE_ prefix
+                String roleName = "ROLE_" + user.getRole().name().toUpperCase();
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 user,
                                 null,
-                                List.of(() -> "ROLE_" + user.getRole().name())
+                                List.of(() -> roleName)
                         );
+
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                // 🔹 Log for debugging
+                logger.info("Authenticated user: " + email + ", role: " + roleName);
+                logger.info("Authorities: " + SecurityContextHolder.getContext().getAuthentication().getAuthorities());
             }
         }
 

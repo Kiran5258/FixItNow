@@ -1,6 +1,7 @@
 package infosys.backend.controller;
 
 import infosys.backend.model.User;
+import infosys.backend.repository.UserRepository;
 import infosys.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/all")
@@ -79,4 +81,6 @@ public class UserController {
         userService.deleteUser(id);
         return ResponseEntity.ok("User deleted successfully");
     }
+
+    
 }

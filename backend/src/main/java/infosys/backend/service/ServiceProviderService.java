@@ -9,6 +9,7 @@ import infosys.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -18,22 +19,18 @@ public class ServiceProviderService {
     private final ServiceRepository serviceRepository;
     private final UserRepository userRepository;
 
-    // ✅ Create a new service (PROVIDER only)
-    public ServiceProvider createService(ServiceRequest request) {
-        User provider = userRepository.findById(request.getProviderId())
-                .orElseThrow(() -> new IllegalArgumentException("Provider not found"));
-
-        if (provider.getRole() != Role.PROVIDER) {
-            throw new IllegalStateException("Only providers can create services");
-        }
+    // ✅ Create a new service (PROVIDER only) using email from JWT
+    public ServiceProvider createService(ServiceRequest request, String providerEmail) {
+        User provider = userRepository.findByEmail(providerEmail)
+                .orElseThrow(() -> new RuntimeException("Provider not found"));
 
         ServiceProvider service = ServiceProvider.builder()
                 .provider(provider)
                 .category(request.getCategory())
                 .subcategory(request.getSubcategory())
                 .description(request.getDescription())
-                .price(request.getPrice()) // BigDecimal
-                .availability(request.getAvailability())
+                .price(request.getPrice() != null ? request.getPrice() : BigDecimal.ZERO)
+                .availability(request.getAvailability() != null ? request.getAvailability() : "Available")
                 .location(request.getLocation())
                 .build();
 

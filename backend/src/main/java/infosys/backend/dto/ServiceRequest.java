@@ -1,14 +1,13 @@
 package infosys.backend.dto;
 
-import java.math.BigDecimal;
 import lombok.*;
+import java.math.BigDecimal;
 
-@Data  // ✅ generates getters, setters, toString, equals, hashCode
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class ServiceRequest {
-    private Long providerId;
     private String category;
     private String subcategory;
     private String description;
