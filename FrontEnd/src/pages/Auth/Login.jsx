@@ -1,67 +1,63 @@
-import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiLogin } from 'react-icons/hi';
-import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from 'react-icons/fa';
-import { userContext } from '../../content/Userprovider';
+import React, { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiLogin } from "react-icons/hi";
+import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from "react-icons/fa";
+import { userContext } from "../../content/Userprovider";
+import axiosInstance from "../../utils/axiosInstance";
+import { API_PATHS } from "../../utils/apiPath";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(""); // error message
   const navigate = useNavigate();
-
-  const { UpdateUser } = useContext(userContext);
+  const { updateUser } = useContext(userContext);
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    // Validation
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
-    setError('');
-
     try {
-      // TODO: Replace with real API call
-      
-      // const response = await axios.post('/api/login', { email, password });
-      // const loggedInUser = response.data;
+      const response = await axiosInstance.post(API_PATHS.AUTH.LOGIN, { email, password });
+      const { token, role } = response.data;
 
-      // MOCK login response for now
-      const loggedInUser = {
-        id: 2,
-        "name": "Bob Smith",
-        "email": "bob@example.com",
-        "password": "bob123",
-        "role": "PROVIDER",
-        "hasProfile": false
-
-      };
+      // Save token
+      localStorage.setItem("token", token);
 
       // Save user info globally
-      UpdateUser(loggedInUser);
+      updateUser({ email, role });
 
-      // Redirect based on role & profile completion
-      if (loggedInUser.role === "PROVIDER" && !loggedInUser.hasProfile) {
-        navigate("/provider-profile");
-      } else {
-        navigate("/"); // Customer/Admin or provider with profile → dashboard
+      setError(""); // clear error
+      // Redirect based on role
+      switch (role) {
+        case "CUSTOMER":
+          navigate("/customer-dashboard");
+          break;
+        case "PROVIDER":
+          navigate("/provider-dashboard");
+          break;
+        case "ADMIN":
+          navigate("/admin-dashboard");
+          break;
+        default:
+          navigate("/");
       }
     } catch (err) {
       console.error(err);
-      setError('Login failed. Please check your credentials.');
+      setError("Login failed. Please check your credentials.");
     }
   };
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden">
-      {/* Blurred Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
-        style={{ backgroundImage: "url('/tools.jpeg')" }}
-      ></div>
+      {/* Background */}
+      <div className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105" style={{ backgroundImage: "url('/tools.jpeg')" }}></div>
       <div className="absolute inset-0 bg-black/40"></div>
 
       {/* Logo */}
@@ -73,7 +69,7 @@ export default function Login() {
         <span className="text-white font-bold text-xl">FixItNow</span>
       </div>
 
-      {/* Tools Row */}
+      {/* Tools row */}
       <div className="relative z-10 flex space-x-6 mb-8 text-white text-3xl">
         <FaHome title="Home Repair" className="hover:text-indigo-400 transition" />
         <FaWrench title="Plumbing" className="hover:text-indigo-400 transition" />
@@ -85,11 +81,10 @@ export default function Login() {
       {/* Form */}
       <div className="relative z-10 w-full max-w-md flex flex-col items-center px-4">
         <h1 className="text-5xl font-bold text-white mb-6">Welcome Back</h1>
-        <p className="text-white text-lg mb-10 text-center">
-          Log in to access your FixItNow account
-        </p>
+        <p className="text-white text-lg mb-10 text-center">Log in to access your FixItNow account</p>
 
         <form className="w-full flex flex-col space-y-6" onSubmit={handleLogin}>
+          {/* Email */}
           <div className="relative">
             <HiOutlineMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
@@ -101,10 +96,11 @@ export default function Login() {
             />
           </div>
 
+          {/* Password */}
           <div className="relative">
             <HiOutlineLockClosed className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white text-xl" />
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -119,8 +115,10 @@ export default function Login() {
             </button>
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {/* Error message */}
+          {error && <p className="text-red-400 text-sm -mt-4">{error}</p>}
 
+          {/* Login button */}
           <button
             type="submit"
             className="w-full py-3 flex items-center justify-center space-x-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
@@ -131,10 +129,7 @@ export default function Login() {
         </form>
 
         <p className="text-white text-sm mt-6">
-          Don't have an account?{' '}
-          <Link to="/register" className="underline font-medium">
-            Sign Up
-          </Link>
+          Don't have an account? <Link to="/register" className="underline font-medium">Sign Up</Link>
         </p>
       </div>
     </div>
