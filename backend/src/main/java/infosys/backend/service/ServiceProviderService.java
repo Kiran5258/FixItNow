@@ -2,16 +2,16 @@ package infosys.backend.service;
 
 import infosys.backend.dto.ServiceRequest;
 import infosys.backend.enums.Role;
-import infosys.backend.model.ServiceProvider;
+import infosys.backend.model.Service;
 import infosys.backend.model.User;
 import infosys.backend.repository.ServiceRepository;
 import infosys.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-@Service
+@Component
 @RequiredArgsConstructor
 public class ServiceProviderService {
 
@@ -19,7 +19,7 @@ public class ServiceProviderService {
     private final UserRepository userRepository;
 
     // ✅ Create a new service (PROVIDER only)
-    public ServiceProvider createService(ServiceRequest request) {
+    public Service createService(ServiceRequest request) {
         User provider = userRepository.findById(request.getProviderId())
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found"));
 
@@ -27,8 +27,8 @@ public class ServiceProviderService {
             throw new IllegalStateException("Only providers can create services");
         }
 
-        ServiceProvider service = ServiceProvider.builder()
-                .provider(provider)
+        Service service = Service.builder()
+                .providerId(request.getProviderId())
                 .category(request.getCategory())
                 .subcategory(request.getSubcategory())
                 .description(request.getDescription())
@@ -41,24 +41,24 @@ public class ServiceProviderService {
     }
 
     // ✅ Get all services (CUSTOMER & ADMIN)
-    public List<ServiceProvider> getAllServices() {
+    public List<Service> getAllServices() {
         return serviceRepository.findAll();
     }
 
     // ✅ Get service by ID
-    public ServiceProvider getServiceById(Long id) {
+    public Service getServiceById(Long id) {
         return serviceRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Service not found with ID: " + id));
     }
 
     // ✅ Get all services by provider
-    public List<ServiceProvider> getServicesByProvider(Long providerId) {
+    public List<Service> getServicesByProvider(Long providerId) {
         return serviceRepository.findByProviderId(providerId);
     }
 
     // ✅ Update existing service (PROVIDER only)
-    public ServiceProvider updateService(Long id, ServiceRequest request) {
-        ServiceProvider existing = serviceRepository.findById(id)
+    public Service updateService(Long id, ServiceRequest request) {
+        Service existing = serviceRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Service not found with ID: " + id));
 
         if (request.getCategory() != null) existing.setCategory(request.getCategory());
