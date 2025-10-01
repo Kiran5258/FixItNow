@@ -2,7 +2,7 @@ package infosys.backend.controller;
 
 import infosys.backend.dto.ServiceRequest;
 import infosys.backend.dto.ServiceResponse;
-import infosys.backend.model.ServiceProvider;
+import infosys.backend.model.Service;
 import infosys.backend.service.ServiceProviderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +23,7 @@ public class ServiceController {
     @PreAuthorize("hasRole('PROVIDER')")
     @PostMapping
     public ResponseEntity<ServiceResponse> createService(@RequestBody ServiceRequest request) {
-        ServiceProvider service = serviceProviderService.createService(request);
+        Service service = serviceProviderService.createService(request);
         return ResponseEntity.ok(toResponse(service));
     }
 
@@ -31,7 +31,7 @@ public class ServiceController {
     @PreAuthorize("hasAnyRole('CUSTOMER','ADMIN')")
     @GetMapping
     public ResponseEntity<List<ServiceResponse>> getAllServices() {
-        List<ServiceProvider> services = serviceProviderService.getAllServices();
+        List<Service> services = serviceProviderService.getAllServices();
         List<ServiceResponse> response = services.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -42,7 +42,7 @@ public class ServiceController {
     @PreAuthorize("hasAnyRole('CUSTOMER','ADMIN','PROVIDER')")
     @GetMapping("/provider/{providerId}")
     public ResponseEntity<List<ServiceResponse>> getServicesByProvider(@PathVariable Long providerId) {
-        List<ServiceProvider> services = serviceProviderService.getServicesByProvider(providerId);
+        List<Service> services = serviceProviderService.getServicesByProvider(providerId);
         List<ServiceResponse> response = services.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -53,7 +53,7 @@ public class ServiceController {
     @PreAuthorize("hasRole('PROVIDER')")
     @PutMapping("/{id}")
     public ResponseEntity<ServiceResponse> updateService(@PathVariable Long id, @RequestBody ServiceRequest request) {
-        ServiceProvider service = serviceProviderService.updateService(id, request);
+        Service service = serviceProviderService.updateService(id, request);
         return ResponseEntity.ok(toResponse(service));
     }
 
@@ -66,11 +66,11 @@ public class ServiceController {
     }
 
     // Convert entity to DTO
-    private ServiceResponse toResponse(ServiceProvider service) {
+    private ServiceResponse toResponse(Service service) {
         return ServiceResponse.builder()
                 .id(service.getId())
-                .providerId(service.getProvider().getId())
-                .providerName(service.getProvider().getName())
+                .providerId(service.getProviderId())
+                .providerName("") // We'll need to fetch provider name separately or via join
                 .category(service.getCategory())
                 .subcategory(service.getSubcategory())
                 .description(service.getDescription())

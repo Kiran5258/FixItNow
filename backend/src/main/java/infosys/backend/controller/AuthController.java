@@ -1,6 +1,7 @@
 package infosys.backend.controller;
 
 import infosys.backend.dto.*;
+import infosys.backend.enums.Role;
 import infosys.backend.model.User;
 import infosys.backend.service.AuthService;
 import infosys.backend.service.ServiceProviderService;
@@ -24,7 +25,7 @@ public class AuthController {
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
 
         // If provider, register user first, then optionally create initial services
-        if (request.getRole() != null && request.getRole().name().equals("PROVIDER")) {
+        if (request.getRole() != null && request.getRole() == Role.PROVIDER) {
             // 1️⃣ Register provider as a user
             User providerUser = authService.register(request);
 

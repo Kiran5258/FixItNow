@@ -1,5 +1,6 @@
 package infosys.backend.controller;
 
+import infosys.backend.enums.Role;
 import infosys.backend.model.User;
 import infosys.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class UserController {
     @GetMapping("/providers")
     public ResponseEntity<List<User>> getAllProviders() {
         List<User> providers = userService.getAllUsers().stream()
-                .filter(u -> u.getRole().name().equals("PROVIDER"))
+                .filter(u -> u.getRole() == Role.PROVIDER)
                 .toList();
         return ResponseEntity.ok(providers);
     }
@@ -43,7 +44,7 @@ public class UserController {
     @GetMapping("/id/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id, Authentication auth) {
         User currentUser = (User) auth.getPrincipal();
-        if (currentUser.getRole().name().equals("PROVIDER") && !currentUser.getId().equals(id)) {
+        if (currentUser.getRole() == Role.PROVIDER && !currentUser.getId().equals(id)) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(userService.getUserById(id));
@@ -53,7 +54,7 @@ public class UserController {
     @GetMapping("/email/{email}")
     public ResponseEntity<User> getUserByEmail(@PathVariable String email, Authentication auth) {
         User currentUser = (User) auth.getPrincipal();
-        if (!currentUser.getRole().name().equals("ADMIN") && !currentUser.getEmail().equals(email)) {
+        if (currentUser.getRole() != Role.ADMIN && !currentUser.getEmail().equals(email)) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(userService.findByEmail(email));
@@ -73,7 +74,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id, Authentication auth) {
         User currentUser = (User) auth.getPrincipal();
-        if (!currentUser.getRole().name().equals("ADMIN") && !currentUser.getId().equals(id)) {
+        if (currentUser.getRole() != Role.ADMIN && !currentUser.getId().equals(id)) {
             return ResponseEntity.status(403).build();
         }
         userService.deleteUser(id);
