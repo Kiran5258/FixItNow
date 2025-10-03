@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FixItNow API Tester</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            min-height: 100vh; 
+            padding: 20px; 
+        }
+        
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        h1 { 
+            color: white; 
+            text-align: center; 
+            margin-bottom: 30px; 
+            font-size: 2.5em; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3); 
+        }
+        
+        .auth-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .auth-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+        
+        .api-section { 
+            background: white; 
+            margin-bottom: 25px; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .api-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+        
+        .api-header { 
+            font-size: 1.4em; 
+            margin-bottom: 20px; 
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .method-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .method-GET { background: #28a745; }
+        .method-POST { background: #007bff; }
+        .method-PUT { background: #ffc107; color: #333; }
+        .method-DELETE { background: #dc3545; }
+        .method-PATCH { background: #6f42c1; }
+        
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .input-row { 
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label { 
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        
+        input, select, textarea { 
+            padding: 10px 12px; 
+            border-radius: 6px; 
+            border: 2px solid #e1e5e9; 
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        button:hover { 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .clear-btn {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+        
+        .output { 
+            background: #f8f9fa; 
+            border: 2px solid #e9ecef; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin-top: 15px; 
+            white-space: pre-wrap; 
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+        
+        .output.success {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .output.error {
+            border-color: #dc3545;
+            background: #fff8f8;
+            color: #721c24;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #667eea;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .auth-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .auth-info.authenticated {
+            background: #e8f5e8;
+            border-color: #28a745;
+        }
+        
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 FixItNow API Tester</h1>
+        
+        <div class="auth-section">
+            <h3>🔐 Authentication</h3>
+            <div id="connection-status" class="auth-info">
+                Status: Checking backend connection...
+            </div>
+            <div id="auth-info" class="auth-info">
+                Status: Not authenticated. Login to test protected endpoints.
+            </div>
+            <div class="input-grid">
+                <div class="input-row">
+                    <label>Email:</label>
+                    <input type="email" id="auth-email" value="admin@example.com">
+                </div>
+                <div class="input-row">
+                    <label>Password:</label>
+                    <input type="password" id="auth-password" value="admin123">
+                </div>
+            </div>
+            <div class="button-group">
+                <button onclick="login()">Login</button>
+                <button onclick="logout()" class="clear-btn">Logout</button>
+            </div>
+        </div>
+        
+        <div class="filter-section" id="troubleshoot-section" style="display: none;">
+            <h3>🔧 Troubleshooting</h3>
+            <div style="background: #fff3cd; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <h4>Common Issues & Solutions:</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li><strong>CORS Error:</strong> Make sure your Spring Boot backend is running and CORS is configured</li>
+                    <li><strong>Connection Failed:</strong> Check if backend is running on the correct port (8080 or 8081)</li>
+                    <li><strong>Authentication Failed:</strong> Create a user first via registration or check your credentials</li>
+                    <li><strong>403 Forbidden:</strong> Login with the correct role for the endpoint you're testing</li>
+                </ul>
+                <div style="margin-top: 15px;">
+                    <strong>Quick Setup:</strong>
+                    <ol style="margin: 10px 0; padding-left: 20px;">
+                        <li>Start backend: <code>cd backend && ./mvnw spring-boot:run</code></li>
+                        <li>Open: <code>http://localhost:8080/api-tester.html</code></li>
+                        <li>Register a new user first, then login</li>
+                        <li>Start testing APIs!</li>
+                    </ol>
+                </div>
+            </div>
+            <button onclick="toggleTroubleshoot()" class="clear-btn">Hide Troubleshooting</button>
+        </div>
+        
+        <div class="filter-section">
+            <h3>🔍 Filter APIs</h3>
+            <div class="filter-grid">
+                <div class="input-row">
+                    <label>Controller:</label>
+                    <select id="controller-filter" onchange="filterAPIs()">
+                        <option value="">All Controllers</option>
+                        <option value="auth">Auth</option>
+                        <option value="user">User</option>
+                        <option value="service">Service</option>
+                        <option value="booking">Booking</option>
+                        <option value="review">Review</option>
+                        <option value="message">Message</option>
+                        <option value="report">Report</option>
+                        <option value="admin">Admin Log</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <label>Method:</label>
+                    <select id="method-filter" onchange="filterAPIs()">
+                        <option value="">All Methods</option>
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                        <option value="PATCH">PATCH</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <label>Search:</label>
+                    <input type="text" id="search-filter" placeholder="Search API name..." onkeyup="filterAPIs()">
+                </div>
+                <div class="input-row">
+                    <button onclick="clearFilters()" class="clear-btn">Clear Filters</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="api-list"></div>
+    </div>
+    
+    <script src="api-tester.js"></script>
+</body>
+</html>
