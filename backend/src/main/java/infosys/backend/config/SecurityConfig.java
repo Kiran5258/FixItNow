@@ -32,6 +32,8 @@ public class SecurityConfig {
                 // Allow registration and login without authentication
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/services").permitAll()
+                .requestMatchers("/api/services").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/services/provider/**").authenticated()
                 // Users endpoint requires authentication
                 .requestMatchers("/api/users/**").authenticated()
                 // All other requests require authentication

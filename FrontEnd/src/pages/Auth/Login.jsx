@@ -53,12 +53,12 @@ export default function Login() {
       UpdateUser(loggedInUser);
 
       // ✅ Redirect logic
-      if (role === "PROVIDER" && !loggedInUser.hasProfile) {
-        navigate("/provider-profile");
+      if (role === "PROVIDER" ) {
+        navigate("/provider-dashboard");
       } else if (role === "ADMIN") {
-        navigate("/");
+        navigate("/admin-dashboard");
       } else if (role === "CUSTOMER") {
-        navigate("/");
+        navigate("/customer-dashboard");
       } else {
         navigate("/"); // fallback → home/dashboard
       }
