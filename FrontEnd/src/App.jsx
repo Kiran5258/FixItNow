@@ -3,7 +3,7 @@ import Userprovider, { userContext } from './content/Userprovider';
 import Home from './pages/Dashboard/Home';
 import Registration from './pages/Auth/Registration';
 import Login from './pages/Auth/Login';
-import ProviderProfileForm from "./pages/Auth/ProviderProfileForm"; 
+// import ProviderProfileForm from "./pages/Auth/ProviderProfileForm"; 
 
 function App() {
   return (
