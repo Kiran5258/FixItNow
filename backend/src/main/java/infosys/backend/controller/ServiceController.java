@@ -25,7 +25,7 @@ public class ServiceController {
     private final UserRepository userRepository; // Inject UserRepository to update profileCompleted
 
     // ✅ Create service (PROVIDER only)
-    
+
     @PostMapping
     public ResponseEntity<ServiceResponse> createService(@RequestBody ServiceRequest request) {
 
@@ -41,7 +41,7 @@ public class ServiceController {
         ServiceProvider service = serviceProviderService.createService(request, providerEmail);
 
         // ✅ Mark profile as completed if not already
-       
+
         // Build response DTO
         ServiceResponse response = ServiceResponse.builder()
                 .id(service.getId())
@@ -80,23 +80,55 @@ public class ServiceController {
     }
 
     // ✅ Get service by ID
-    @GetMapping("/{id}")
-    public ResponseEntity<ServiceResponse> getServiceById(@PathVariable Long id) {
-        ServiceProvider service = serviceProviderService.getServiceById(id);
+    @GetMapping("/provider/{providerId}")
+    public ResponseEntity<List<ServiceResponse>> getServicesByProvider(@PathVariable Long providerId) {
+        List<ServiceProvider> services = serviceProviderService.getServicesByProvider(providerId);
+
+        List<ServiceResponse> response = services.stream()
+            .map(service -> ServiceResponse.builder()
+                    .id(service.getId())
+                    .providerId(service.getProvider().getId())
+                    .providerName(service.getProvider().getName())
+                    .category(service.getCategory())
+                    .subcategory(service.getSubcategory())
+                    .description(service.getDescription())
+                    .price(service.getPrice())
+                    .availability(service.getAvailability())
+                    .location(service.getLocation())
+                    .build())
+            .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ✅ Update service by ID (Provider/Admin only)
+    @PutMapping("/{id}")
+    public ResponseEntity<ServiceResponse> updateService(
+            @PathVariable Long id,
+            @RequestBody ServiceRequest request) {
+
+        ServiceProvider updated = serviceProviderService.updateService(id, request);
 
         ServiceResponse response = ServiceResponse.builder()
-                .id(service.getId())
-                .providerId(service.getProvider().getId())
-                .providerName(service.getProvider().getName())
-                .category(service.getCategory())
-                .subcategory(service.getSubcategory())
-                .description(service.getDescription())
-                .price(service.getPrice())
-                .availability(service.getAvailability())
-                .location(service.getLocation())
+                .id(updated.getId())
+                .providerId(updated.getProvider().getId())
+                .providerName(updated.getProvider().getName())
+                .category(updated.getCategory())
+                .subcategory(updated.getSubcategory())
+                .description(updated.getDescription())
+                .price(updated.getPrice())
+                .availability(updated.getAvailability())
+                .location(updated.getLocation())
                 .build();
 
         return ResponseEntity.ok(response);
+    }
+
+    // ✅ Delete service by ID (Provider/Admin only)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteService(@PathVariable Long id) {
+        serviceProviderService.deleteService(id);
+        return ResponseEntity.noContent().build();
     }
 
     

@@ -83,21 +83,9 @@ export default function Registration() {
     try {
       const res = await register(userData);
       alert("Registration successful!");
-      setCreatedProfile(role === "PROVIDER" ? userData : null); // store for preview
-      if (role !== "PROVIDER") {
+      
         navigate("/login"); // Customer/Admin go to login immediately
-      } else {
-        // Provider stays on page to preview profile
-        setFullname("");
-        setEmail("");
-        setPassword("");
-        setCategory("");
-        setSubcategory("");
-        setDescription("");
-        setPrice("");
-        setAvailability("");
-        setLocation("");
-      }
+      
     } catch (err) {
       console.error("Registration error:", err);
       setError(err.response?.data?.message || "Registration failed");
@@ -120,8 +108,9 @@ export default function Registration() {
         <span className="text-white font-bold text-xl">FixItNow</span>
       </div>
 
-      <div className="relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto flex flex-col items-center px-4 py-6 bg-black/30 rounded-lg backdrop-blur-lg">
-        <h1 className="text-4xl font-bold text-white mb-4">Join FixItNow</h1>
+      <div className="relative z-10 w-full max-w-md flex flex-col items-center px-6 py-8 
+  rounded-xl backdrop-blur-md shadow-2xl">
+
         <p className="text-white text-lg mb-6 text-center">
           Create your account below to get started.
         </p>
@@ -185,7 +174,7 @@ export default function Registration() {
             <button
               type="button"
               onClick={handleUseCurrentLocation}
-              className="px-3 py-2 text-sm bg-indigo-500 hover:bg-indigo-600 rounded-md text-white"
+              className="px-3 py-3 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
             >
               Use Current
             </button>
@@ -199,7 +188,7 @@ export default function Registration() {
           >
             <option className="bg-black text-white" value="CUSTOMER">Customer</option>
             <option className="bg-black text-white" value="PROVIDER">Provider</option>
-            <option className="bg-black text-white" value="ADMIN">Admin</option>
+            {/* <option className="bg-black text-white" value="ADMIN">Admin</option> */}
           </select>
 
           {/* Provider fields */}

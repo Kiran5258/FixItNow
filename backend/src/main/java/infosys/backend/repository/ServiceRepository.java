@@ -12,4 +12,6 @@ public interface ServiceRepository extends JpaRepository<ServiceProvider, Long> 
 
     // Find all services by provider
     List<ServiceProvider> findByProviderId(Long providerId);
+
+    
 }
