@@ -2,38 +2,35 @@ package infosys.backend.service;
 
 import infosys.backend.dto.ServiceRequest;
 import infosys.backend.enums.Role;
-import infosys.backend.model.Service;
+import infosys.backend.model.ServiceProvider;
 import infosys.backend.model.User;
 import infosys.backend.repository.ServiceRepository;
 import infosys.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
-@Component
+@Service
 @RequiredArgsConstructor
 public class ServiceProviderService {
 
     private final ServiceRepository serviceRepository;
     private final UserRepository userRepository;
 
-    // ✅ Create a new service (PROVIDER only)
-    public Service createService(ServiceRequest request) {
-        User provider = userRepository.findById(request.getProviderId())
-                .orElseThrow(() -> new IllegalArgumentException("Provider not found"));
+    // ✅ Create a new service (PROVIDER only) using email from JWT
+    public ServiceProvider createService(ServiceRequest request, String providerEmail) {
+        User provider = userRepository.findByEmail(providerEmail)
+                .orElseThrow(() -> new RuntimeException("Provider not found"));
 
-        if (provider.getRole() != Role.PROVIDER) {
-            throw new IllegalStateException("Only providers can create services");
-        }
-
-        Service service = Service.builder()
-                .providerId(request.getProviderId())
+        ServiceProvider service = ServiceProvider.builder()
+                .provider(provider)
                 .category(request.getCategory())
                 .subcategory(request.getSubcategory())
                 .description(request.getDescription())
-                .price(request.getPrice()) // BigDecimal
-                .availability(request.getAvailability())
+                .price(request.getPrice() != null ? request.getPrice() : BigDecimal.ZERO)
+                .availability(request.getAvailability() != null ? request.getAvailability() : "Available")
                 .location(request.getLocation())
                 .build();
 
@@ -41,24 +38,24 @@ public class ServiceProviderService {
     }
 
     // ✅ Get all services (CUSTOMER & ADMIN)
-    public List<Service> getAllServices() {
+    public List<ServiceProvider> getAllServices() {
         return serviceRepository.findAll();
     }
 
     // ✅ Get service by ID
-    public Service getServiceById(Long id) {
+    public ServiceProvider getServiceById(Long id) {
         return serviceRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Service not found with ID: " + id));
     }
 
     // ✅ Get all services by provider
-    public List<Service> getServicesByProvider(Long providerId) {
+    public List<ServiceProvider> getServicesByProvider(Long providerId) {
         return serviceRepository.findByProviderId(providerId);
     }
 
     // ✅ Update existing service (PROVIDER only)
-    public Service updateService(Long id, ServiceRequest request) {
-        Service existing = serviceRepository.findById(id)
+    public ServiceProvider updateService(Long id, ServiceRequest request) {
+        ServiceProvider existing = serviceRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Service not found with ID: " + id));
 
         if (request.getCategory() != null) existing.setCategory(request.getCategory());
