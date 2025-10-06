@@ -9,7 +9,8 @@ import {
 } from "react-icons/hi";
 import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from "react-icons/fa";
 import { userContext } from "../../content/Userprovider";
-import { login } from "../../services/api"; // ✅ import API
+import { login } from "../../services/api";
+import { validateEmail } from "../../utils/helper";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -24,7 +25,7 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!validateEmail(email) || !password) {
       setError("Please fill in all fields");
       return;
     }
@@ -53,7 +54,7 @@ export default function Login() {
       UpdateUser(loggedInUser);
 
       // ✅ Redirect logic
-      if (role === "PROVIDER" ) {
+      if (role === "PROVIDER") {
         navigate("/provider-dashboard");
       } else if (role === "ADMIN") {
         navigate("/admin-dashboard");

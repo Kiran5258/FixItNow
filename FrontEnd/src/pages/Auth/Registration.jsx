@@ -10,13 +10,17 @@ import {
 } from "react-icons/hi";
 import { FaHome, FaWrench } from "react-icons/fa";
 import { register } from "../../services/api";
+import toast from "react-hot-toast";
 
 export default function Registration() {
+  const navigate = useNavigate();
+
+  // User fields
   const [fullname, setFullname] = useState("");
-  const [location, setLocation] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("CUSTOMER");
+  const [location, setLocation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,9 +32,8 @@ export default function Registration() {
   const [price, setPrice] = useState("");
   const [availability, setAvailability] = useState("");
 
-  const [createdProfile, setCreatedProfile] = useState(null); // Store provider profile for preview
-
-  const navigate = useNavigate();
+  // Created profile preview (for PROVIDER)
+  const [createdProfile, setCreatedProfile] = useState(null);
 
   // 🌍 Get current location
   const handleUseCurrentLocation = () => {
@@ -41,11 +44,11 @@ export default function Registration() {
           setLocation(`Lat: ${latitude}, Lng: ${longitude}`);
         },
         () => {
-          alert("Unable to fetch location. Please enter manually.");
+          toast.error("Unable to fetch location. Please enter manually.");
         }
       );
     } else {
-      alert("Geolocation not supported by your browser.");
+      toast.error("Geolocation not supported by your browser.");
     }
   };
 
@@ -53,18 +56,26 @@ export default function Registration() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
+    // Basic validations
     if (!fullname || !email || !password || !location) {
-      setError("Please fill all required fields");
+      setError("Please fill all required fields.");
+      setLoading(false);
       return;
     }
 
-    if (
-      role === "PROVIDER" &&
-      (!category || !subcategory || !description || !price || !availability)
-    ) {
-      setError("Please fill all provider fields");
-      return;
+    if (role === "PROVIDER") {
+      if (!category || !subcategory || !description || !price || !availability) {
+        setError("Please fill all provider fields.");
+        setLoading(false);
+        return;
+      }
+      if (parseFloat(price) <= 0) {
+        setError("Price must be greater than 0.");
+        setLoading(false);
+        return;
+      }
     }
 
     const userData = {
@@ -73,22 +84,23 @@ export default function Registration() {
       password,
       role,
       location,
-      category,
-      subcategory,
-      description,
+      category: role === "PROVIDER" ? category : undefined,
+      subcategory: role === "PROVIDER" ? subcategory : undefined,
+      description: role === "PROVIDER" ? description : undefined,
       price: role === "PROVIDER" ? parseFloat(price) : undefined,
-      availability,
+      availability: role === "PROVIDER" ? availability : undefined,
     };
 
     try {
       const res = await register(userData);
-      alert("Registration successful!");
-      
-        navigate("/login"); // Customer/Admin go to login immediately
-      
+      toast.success("Registration successful!");
+      if (role === "PROVIDER") setCreatedProfile(userData);
+      navigate("/login");
     } catch (err) {
       console.error("Registration error:", err);
       setError(err.response?.data?.message || "Registration failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,6 +112,7 @@ export default function Registration() {
       ></div>
       <div className="absolute inset-0 bg-black/40"></div>
 
+      {/* Logo */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
         <div className="relative w-10 h-10">
           <FaHome className="text-white w-full h-full" />
@@ -109,7 +122,7 @@ export default function Registration() {
       </div>
 
       <div className="relative z-10 w-full max-w-md flex flex-col items-center px-6 py-8 
-  rounded-xl backdrop-blur-md shadow-2xl">
+        rounded-xl backdrop-blur-md shadow-2xl">
 
         <p className="text-white text-lg mb-6 text-center">
           Create your account below to get started.
@@ -188,7 +201,6 @@ export default function Registration() {
           >
             <option className="bg-black text-white" value="CUSTOMER">Customer</option>
             <option className="bg-black text-white" value="PROVIDER">Provider</option>
-            {/* <option className="bg-black text-white" value="ADMIN">Admin</option> */}
           </select>
 
           {/* Provider fields */}
@@ -254,8 +266,10 @@ export default function Registration() {
             </>
           )}
 
+          {/* Error message */}
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
+          {/* Submit button */}
           <button
             type="submit"
             disabled={loading}
@@ -265,7 +279,7 @@ export default function Registration() {
           </button>
         </form>
 
-        {/* Provider Profile Preview */}
+        {/* Provider profile preview */}
         {createdProfile && (
           <div className="mt-6 p-4 bg-white/10 rounded-lg text-white w-full">
             <h3 className="text-xl font-bold">
@@ -278,6 +292,7 @@ export default function Registration() {
           </div>
         )}
 
+        {/* Login link */}
         <p className="text-white text-sm mt-6">
           Already have an account? <Link to="/login" className="underline font-medium">Log In</Link>
         </p>
