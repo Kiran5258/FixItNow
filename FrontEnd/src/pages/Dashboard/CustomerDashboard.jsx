@@ -6,6 +6,7 @@ import {
 } from "react-icons/fi";
 import { MdMiscellaneousServices } from "react-icons/md";
 import { BiHistory } from "react-icons/bi";
+import { getAllServices } from "../../services/api";
 
 const rustBrown = "#6e290cff";
 
@@ -26,30 +27,18 @@ export default function CustomerDashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ ...customer });
 
-  // Fetch services (mock)
+  // Fetch services from backend
   useEffect(() => {
     setLoading(true);
-    setTimeout(() => {
-      setServices([
-        {
-          id: 1,
-          category: "Electrician",
-          subcategory: "Fan Repair",
-          description: "Expert in repairing ceiling and table fans.",
-          price: 300,
-          rating: 4.5,
-        },
-        {
-          id: 2,
-          category: "Plumber",
-          subcategory: "Pipe Fitting",
-          description: "Quick plumbing fixes and leak repair.",
-          price: 500,
-          rating: 4.7,
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    getAllServices()
+      .then(res => {
+        // Assuming res.data is an array of services with provider info
+        setServices(res.data);
+      })
+      .catch(err => {
+        console.error("Error fetching services:", err);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   // Fetch bookings (mock)
@@ -66,9 +55,9 @@ export default function CustomerDashboard() {
   };
 
   const handleSaveProfile = () => {
-    setCustomer(editProfileData); // save changes
+    setCustomer(editProfileData);
     setIsEditingProfile(false);
-    // Here you can also call your API to update the profile on backend
+    // TODO: Call API to update profile on backend
   };
 
   const handleCancelProfile = () => {
@@ -143,7 +132,10 @@ export default function CustomerDashboard() {
                 {services.map(service => (
                   <div key={service.id} className="bg-white p-5 border rounded-xl shadow hover:shadow-md transition">
                     <h3 className="font-bold">{service.category} - {service.subcategory}</h3>
-                    <p className="text-sm text-gray-600 mt-2">{service.description}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Provider: <span className="font-medium">{service.providerName || service.name}</span>
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">{service.description}</p>
                     <div className="flex justify-between items-center mt-3">
                       <span className="font-semibold text-blue-600">₹{service.price}</span>
                       <span className="text-yellow-500 text-sm">★ {service.rating}</span>
@@ -222,6 +214,8 @@ export default function CustomerDashboard() {
     </div>
   );
 }
+
+
 
 // Metric Card
 function MetricCard({ title, value, icon }) {

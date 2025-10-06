@@ -28,8 +28,6 @@ export default function Registration() {
   const [price, setPrice] = useState("");
   const [availability, setAvailability] = useState("");
 
-  const [createdProfile, setCreatedProfile] = useState(null); // Store provider profile for preview
-
   const navigate = useNavigate();
 
   // 🌍 Get current location
@@ -53,9 +51,11 @@ export default function Registration() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     if (!fullname || !email || !password || !location) {
       setError("Please fill all required fields");
+      setLoading(false);
       return;
     }
 
@@ -64,6 +64,7 @@ export default function Registration() {
       (!category || !subcategory || !description || !price || !availability)
     ) {
       setError("Please fill all provider fields");
+      setLoading(false);
       return;
     }
 
@@ -81,14 +82,21 @@ export default function Registration() {
     };
 
     try {
-      const res = await register(userData);
+      await register(userData);
+
       alert("Registration successful!");
-      
-        navigate("/login"); // Customer/Admin go to login immediately
-      
+      navigate("/login"); // Redirect after registration
     } catch (err) {
       console.error("Registration error:", err);
-      setError(err.response?.data?.message || "Registration failed");
+
+      if (err.response?.status === 409) {
+        // Email already exists
+        setError("Email already exists. Please use a different email.");
+      } else {
+        setError(err.response?.data?.message || "Registration failed");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -188,7 +196,6 @@ export default function Registration() {
           >
             <option className="bg-black text-white" value="CUSTOMER">Customer</option>
             <option className="bg-black text-white" value="PROVIDER">Provider</option>
-            {/* <option className="bg-black text-white" value="ADMIN">Admin</option> */}
           </select>
 
           {/* Provider fields */}
@@ -264,19 +271,6 @@ export default function Registration() {
             {loading ? "Submitting..." : "Sign Up"}
           </button>
         </form>
-
-        {/* Provider Profile Preview */}
-        {createdProfile && (
-          <div className="mt-6 p-4 bg-white/10 rounded-lg text-white w-full">
-            <h3 className="text-xl font-bold">
-              {createdProfile.category} - {createdProfile.subcategory}
-            </h3>
-            <p>{createdProfile.description}</p>
-            <p>Price: ₹{createdProfile.price}</p>
-            <p>Availability: {createdProfile.availability}</p>
-            <p>Location: {createdProfile.location}</p>
-          </div>
-        )}
 
         <p className="text-white text-sm mt-6">
           Already have an account? <Link to="/login" className="underline font-medium">Log In</Link>
