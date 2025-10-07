@@ -30,16 +30,26 @@ export default function Registration() {
 
   const navigate = useNavigate();
 
-  // 🌍 Get current location
-  const handleUseCurrentLocation = () => {
+  // 🌍 Capture current location with address (reverse geocoding)
+  const handleUseCurrentLocation = async () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const { latitude, longitude } = pos.coords;
-          setLocation(`Lat: ${latitude}, Lng: ${longitude}`);
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
+            const data = await response.json();
+            setLocation(data.display_name || `Lat: ${latitude}, Lon: ${longitude}`);
+          } catch (error) {
+            console.error("Error getting address:", error);
+            alert("Failed to retrieve location details.");
+          }
         },
-        () => {
-          alert("Unable to fetch location. Please enter manually.");
+        (error) => {
+          console.error("Geolocation error:", error);
+          alert("Please allow location access.");
         }
       );
     } else {
@@ -83,14 +93,11 @@ export default function Registration() {
 
     try {
       await register(userData);
-
       alert("Registration successful!");
-      navigate("/login"); // Redirect after registration
+      navigate("/login");
     } catch (err) {
       console.error("Registration error:", err);
-
       if (err.response?.status === 409) {
-        // Email already exists
         setError("Email already exists. Please use a different email.");
       } else {
         setError(err.response?.data?.message || "Registration failed");
@@ -102,12 +109,14 @@ export default function Registration() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden">
+      {/* Background */}
       <div
         className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
         style={{ backgroundImage: "url('/tools.jpeg')" }}
       ></div>
       <div className="absolute inset-0 bg-black/40"></div>
 
+      {/* Logo */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
         <div className="relative w-10 h-10">
           <FaHome className="text-white w-full h-full" />
@@ -116,8 +125,9 @@ export default function Registration() {
         <span className="text-white font-bold text-xl">FixItNow</span>
       </div>
 
+      {/* Form Container */}
       <div className="relative z-10 w-full max-w-md flex flex-col items-center px-6 py-8 
-  rounded-xl backdrop-blur-md shadow-2xl">
+        rounded-xl backdrop-blur-md shadow-2xl">
 
         <p className="text-white text-lg mb-6 text-center">
           Create your account below to get started.

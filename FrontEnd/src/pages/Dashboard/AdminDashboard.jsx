@@ -82,7 +82,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex min-h-screen bg-white text-black">
       {/* Sidebar */}
-      <aside className="w-64 p-6 flex flex-col" style={{ backgroundColor: rustBrown }}>
+      <aside className="w-64 p-6 flex flex-col h-screen sticky top-0" style={{ backgroundColor: rustBrown }}>
         <h2 className="text-2xl font-bold mb-6 text-white">FixItNow Admin</h2>
         <nav className="flex flex-col gap-3 flex-1">
           {sidebarItems.map(item => (
@@ -173,16 +173,32 @@ function UsersCardHome({ users, loading }) {
     </div>
   );
 }
-
-// Full Users
+// ------------------------- Users Full -------------------------
 function UsersCardFull({ users, loading, setUsers }) {
-  if (loading) return <div className="bg-white border rounded-lg p-6 text-center" style={{ borderColor: rustBrown + "40" }}>Loading users...</div>;
+  if (loading)
+    return (
+      <div
+        className="bg-white border rounded-lg p-6 text-center shadow-md"
+        style={{ borderColor: rustBrown + "40" }}
+      >
+        Loading users...
+      </div>
+    );
 
   return (
-    <div className="bg-white border rounded-xl p-6 w-full" style={{ borderColor: rustBrown + "40" }}>
-      <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3" style={{ color: rustBrown }}><FiUsers /> Manage Users</h2>
+    <div
+      className="bg-white border rounded-xl p-6 w-full shadow-md"
+      style={{ borderColor: rustBrown + "40" }}
+    >
+      <h2
+        className="text-2xl font-semibold mb-6 flex items-center gap-3"
+        style={{ color: rustBrown }}
+      >
+        <FiUsers /> Manage Users
+      </h2>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {users.map(u => (
+        {users.map((u) => (
           <UserCard key={u.id} user={u} setUsers={setUsers} users={users} />
         ))}
       </div>
@@ -190,15 +206,24 @@ function UsersCardFull({ users, loading, setUsers }) {
   );
 }
 
-// User Card Component
+// ------------------------- User Card -------------------------
 function UserCard({ user, users, setUsers }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ ...user });
 
+  const roleIcon =
+    user.role.toLowerCase() === "admin" ? (
+      <MdAdminPanelSettings className="w-6 h-6 text-white" />
+    ) : user.role.toLowerCase() === "provider" ? (
+      <FaUserTie className="w-6 h-6 text-white" />
+    ) : (
+      <FiUsers className="w-6 h-6 text-white" />
+    );
+
   const handleSave = async () => {
     try {
       await updateUser(user.id, editData);
-      setUsers(users.map(u => u.id === user.id ? editData : u));
+      setUsers(users.map((u) => (u.id === user.id ? editData : u)));
       setIsEditing(false);
     } catch (err) {
       console.error(err);
@@ -210,7 +235,7 @@ function UserCard({ user, users, setUsers }) {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
       await deleteUser(user.id);
-      setUsers(users.filter(u => u.id !== user.id));
+      setUsers(users.filter((u) => u.id !== user.id));
     } catch (err) {
       console.error(err);
       alert("Failed to delete user.");
@@ -218,67 +243,112 @@ function UserCard({ user, users, setUsers }) {
   };
 
   return (
-    <div className="flex flex-col justify-between bg-white border p-5 rounded-xl hover:shadow-md transition" style={{ borderColor: rustBrown + "40" }}>
+    <div className="flex flex-col justify-between bg-gradient-to-r from-white to-[#fff7f2] border rounded-xl shadow-lg hover:shadow-2xl transition-transform transform hover:-translate-y-1 p-5" 
+         style={{ borderColor: rustBrown + "40" }}>
+      
+      <div className="flex items-center gap-4 mb-3">
+        <div
+          className="px-2 py-2 rounded bg-gradient-to-r from-black to-[#B7410E] hover:from-[#333] hover:to-[#8a300b] shadow-lg transition-transform transform hover:scale-105"
+        >
+          {roleIcon}
+        </div>
+
+        {isEditing ? (
+          <input
+            value={editData.name}
+            onChange={(e) =>
+              setEditData({ ...editData, name: e.target.value })
+            }
+            className="border px-2 py-1 rounded w-full"
+            placeholder="Name"
+          />
+        ) : (
+          <h3 className="text-lg font-bold">{user.name}</h3>
+        )}
+      </div>
+
       {isEditing ? (
-        <div className="flex flex-col gap-2">
-          <input value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} className="border px-2 py-1 rounded" placeholder="Name" />
-          <input value={editData.email} onChange={e => setEditData({ ...editData, email: e.target.value })} className="border px-2 py-1 rounded" placeholder="Email" />
-          <select value={editData.role} onChange={e => setEditData({ ...editData, role: e.target.value })} className="border px-2 py-1 rounded">
+        <div className="flex flex-col gap-2 mb-3">
+          <input
+            value={editData.email}
+            onChange={(e) =>
+              setEditData({ ...editData, email: e.target.value })
+            }
+            className="border px-2 py-1 rounded w-full"
+            placeholder="Email"
+          />
+          <select
+            value={editData.role}
+            onChange={(e) =>
+              setEditData({ ...editData, role: e.target.value })
+            }
+            className="border px-2 py-1 rounded w-full"
+          >
             <option value="ADMIN">ADMIN</option>
             <option value="PROVIDER">PROVIDER</option>
             <option value="CUSTOMER">CUSTOMER</option>
           </select>
         </div>
       ) : (
-        <div>
-          <h3 className="text-lg font-bold">{user.name}</h3>
-          <p className="text-sm text-black/70">{user.email}</p>
-          <span className="text-sm px-2 py-1 border rounded-full" style={{ borderColor: rustBrown + "40" }}>{user.role}</span>
-        </div>
+        <p className="text-sm text-black/70 mb-3">{user.email}</p>
       )}
-      <div className="mt-4 flex justify-end gap-2">
-        {isEditing ? (
-          <>
-            <button onClick={handleSave} className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition">Save</button>
-            <button onClick={() => setIsEditing(false)} className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition">Cancel</button>
-          </>
-        ) : (
-          <>
-            <button onClick={() => setIsEditing(true)} className="bg-[#4B5563] text-white px-3 py-1 rounded hover:bg-[#374151] transition">Edit</button>
-            <button onClick={handleDelete} className="bg-[#B7410E] text-white px-3 py-1 rounded hover:bg-[#8a300b] transition">Delete</button>
-          </>
-        )}
+
+      <div className="flex justify-between items-center">
+        <span
+          
+        >
+          
+        </span>
+
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <button className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition" onClick={handleSave}>Save</button>
+              <button className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition" onClick={() => setIsEditing(false)}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <button className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 transition" onClick={() => setIsEditing(true)}>Edit</button>
+              <button className="bg-[#B7410E] text-white px-3 py-1 rounded hover:bg-[#8a300b] transition" onClick={handleDelete}>Delete</button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// Services Card
+// ------------------------- Services Full -------------------------
 function ServicesCardFull({ services, setServices }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {services.map(service => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {services.map((service) => (
         <ServiceCard key={service.id} service={service} setServices={setServices} services={services} />
       ))}
     </div>
   );
 }
 
-// Service Card Component
+// ------------------------- Service Card -------------------------
 function ServiceCard({ service, services, setServices }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ ...service });
 
   const icon =
-    service.category.toLowerCase() === "carpentry" ? <GiHammerNails style={{ color: rustBrown }} /> :
-    service.category.toLowerCase() === "electrical" ? <GiElectric style={{ color: rustBrown }} /> :
-    service.category.toLowerCase() === "cleaning" ? <GiBroom style={{ color: rustBrown }} /> :
-    <GiHammerNails style={{ color: rustBrown }} />; 
+    service.category.toLowerCase() === "carpentry" ? (
+      <GiHammerNails className="text-white" />
+    ) : service.category.toLowerCase() === "electrical" ? (
+      <GiElectric className="text-white" />
+    ) : service.category.toLowerCase() === "cleaning" ? (
+      <GiBroom className="text-white" />
+    ) : (
+      <GiHammerNails className="text-white" />
+    );
 
   const handleSave = async () => {
     try {
       await updateService(service.id, editData);
-      setServices(services.map(s => s.id === service.id ? editData : s));
+      setServices(services.map((s) => (s.id === service.id ? editData : s)));
       setIsEditing(false);
     } catch (err) {
       console.error(err);
@@ -290,7 +360,7 @@ function ServiceCard({ service, services, setServices }) {
     if (!window.confirm("Are you sure you want to delete this service?")) return;
     try {
       await deleteService(service.id);
-      setServices(services.filter(s => s.id !== service.id));
+      setServices(services.filter((s) => s.id !== service.id));
     } catch (err) {
       console.error(err);
       alert("Failed to delete service.");
@@ -298,34 +368,87 @@ function ServiceCard({ service, services, setServices }) {
   };
 
   return (
-    <div className="flex flex-col justify-between bg-white border p-5 rounded-xl hover:shadow-md transition" style={{ borderColor: rustBrown + "40" }}>
+    <div
+      className="flex flex-col justify-between bg-white border rounded-xl shadow-lg hover:shadow-xl transition p-5 border-gray-200"
+      style={{ borderColor: rustBrown + "40" }}
+    >
       <div className="flex items-center gap-3 mb-3">
-        <div className="text-2xl">{icon}</div>
-        <h3 className="font-bold text-lg">{service.category} - {service.subcategory}</h3>
+        <div className={`w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-r from-black to-[#B7410E] hover:from-[#333] hover:to-[#8a300b] shadow-lg transition-transform transform hover:scale-105`}>
+          {icon}
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-lg">
+            {service.category} - {service.subcategory}
+          </h3>
+          <p className="text-sm text-black/70">Provider: {service.providerName}</p>
+        </div>
       </div>
 
-      {isEditing ? (
-        <div className="flex flex-col gap-2 mb-4">
-          <textarea value={editData.description} onChange={e => setEditData({ ...editData, description: e.target.value })} className="border px-2 py-1 rounded" placeholder="Description" />
-          <input type="number" value={editData.price} onChange={e => setEditData({ ...editData, price: parseFloat(e.target.value) })} className="border px-2 py-1 rounded" placeholder="Price" />
-          <input type="text" value={editData.availability} onChange={e => setEditData({ ...editData, availability: e.target.value })} className="border px-2 py-1 rounded" placeholder="Availability" />
-        </div>
-      ) : (
-        <p className="text-sm text-black/70 mb-4">{service.description}</p>
-      )}
+      {/* Inline editing without expanding whole card */}
+      <div className="mb-4 flex flex-col gap-2">
+        {isEditing ? (
+          <>
+            <input
+              type="text"
+              value={editData.description}
+              onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+              className="border px-2 py-1 rounded w-full"
+              placeholder="Description"
+            />
+            <input
+              type="number"
+              value={editData.price}
+              onChange={(e) => setEditData({ ...editData, price: parseFloat(e.target.value) })}
+              className="border px-2 py-1 rounded w-full"
+              placeholder="Price"
+            />
+            <input
+            type="text"
+            value={editData.availability}
+            onChange={(e) =>
+              setEditData({ ...editData, availability: e.target.value })
+            }
+            className="border px-2 py-1 rounded"
+            placeholder="Availability"
+          />
+          </>
+        ) : (
+          <p className="text-sm text-black/70">{service.description}</p>
+        )}
+      </div>
 
       <div className="flex justify-between items-center">
-        {!isEditing && <span className="font-semibold text-black text-lg">₹{service.price}</span>}
+        <span className="font-semibold text-black text-lg">₹{service.price}</span>
         <div className="flex gap-2">
           {isEditing ? (
             <>
-              <button onClick={handleSave} className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition">Save</button>
-              <button onClick={() => setIsEditing(false)} className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition">Cancel</button>
+              <button
+                onClick={handleSave}
+                className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition"
+              >
+                Cancel
+              </button>
             </>
           ) : (
             <>
-              <button onClick={() => setIsEditing(true)} className="bg-[#4B5563] text-white px-3 py-1 rounded hover:bg-[#374151] transition">Edit</button>
-              <button onClick={handleDelete} className="bg-[#B7410E] text-white px-3 py-1 rounded hover:bg-[#8a300b] transition">Delete</button>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 transition"
+              >
+                Edit
+              </button>
+              <button
+                onClick={handleDelete}
+                className="bg-[#B7410E] text-white px-3 py-1 rounded hover:bg-[#8a300b] transition"
+              >
+                Delete
+              </button>
             </>
           )}
         </div>
@@ -333,6 +456,7 @@ function ServiceCard({ service, services, setServices }) {
     </div>
   );
 }
+
 
 // Bookings
 function BookingsCard({ bookings, loading }) {

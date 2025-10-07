@@ -48,7 +48,7 @@ export const deleteService = (id) => API.delete(`/services/${id}`);
 // =====================
 export const getAllUsers = () => API.get("/users/all"); // admin only
 export const getProviders = () => API.get("/users/providers"); // customers
-export const getMyProfile = () => API.get("/users/me"); // provider itself
+export const getMyProfile = () => API.get("/users/me");
 export const getUserById = (id) => API.get(`/users/id/${id}`);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const deleteUser = (id) => API.delete(`/users/${id}`);
