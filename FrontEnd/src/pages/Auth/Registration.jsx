@@ -204,8 +204,8 @@ export default function Registration() {
             onChange={(e) => setRole(e.target.value)}
             className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option className="bg-black text-white" value="CUSTOMER">Customer</option>
-            <option className="bg-black text-white" value="PROVIDER">Provider</option>
+            <option className="bg-white text-black" value="CUSTOMER">Customer</option>
+            <option className="bg-white text-black" value="PROVIDER">Provider</option>
           </select>
 
           {/* Provider fields */}
@@ -216,11 +216,11 @@ export default function Registration() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">Select Category</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Carpentry">Carpentry</option>
-                <option value="Cleaning">Cleaning</option>
+                <option className="bg-white text-black" value="">Select Category</option>
+                <option className="bg-white text-black" value="Plumbing">Plumbing</option>
+                <option className="bg-white text-black" value="Electrical">Electrical</option>
+                <option className="bg-white text-black" value="Carpentry">Carpentry</option>
+                <option className="bg-white text-black" value="Cleaning">Cleaning</option>
               </select>
 
               <select
@@ -228,21 +228,21 @@ export default function Registration() {
                 onChange={(e) => setSubcategory(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">Select Subcategory</option>
+                <option  className="bg-white text-black" value="">Select Subcategory</option>
                 {category === "Plumbing" && (
                   <>
-                    <option value="Pipe Repair">Pipe Repair</option>
-                    <option value="Faucet Installation">Faucet Installation</option>
+                    <option  className="bg-white text-black" value="Pipe Repair">Pipe Repair</option>
+                    <option  className="bg-white text-black" value="Faucet Installation">Faucet Installation</option>
                   </>
                 )}
                 {category === "Electrical" && (
                   <>
-                    <option value="Wiring">Wiring</option>
-                    <option value="Appliance Repair">Appliance Repair</option>
+                    <option  className="bg-white text-black" value="Wiring">Wiring</option>
+                    <option  className="bg-white text-black" value="Appliance Repair">Appliance Repair</option>
                   </>
                 )}
-                {category === "Carpentry" && <option value="Furniture Repair">Furniture Repair</option>}
-                {category === "Cleaning" && <option value="Home Cleaning">Home Cleaning</option>}
+                {category === "Carpentry" && <option  className="bg-white text-black" value="Furniture Repair">Furniture Repair</option>}
+                {category === "Cleaning" && <option  className="bg-white text-black" value="Home Cleaning">Home Cleaning</option>}
               </select>
 
               <textarea

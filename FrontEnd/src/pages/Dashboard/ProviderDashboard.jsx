@@ -24,6 +24,10 @@ export default function ProviderDashboard() {
   const [activeTab, setActiveTab] = useState("home");
   const [error, setError] = useState(false);
 
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState(null);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -108,7 +112,14 @@ export default function ProviderDashboard() {
         )}
 
         {activeTab === "services" && (
-          <ServicesCardFull services={services} setServices={setServices} />
+          <ServicesCardFull
+            services={services}
+            setServices={setServices}
+            modalOpen={modalOpen}
+            setModalOpen={setModalOpen}
+            editingService={editingService}
+            setEditingService={setEditingService}
+          />
         )}
 
         {activeTab === "bookings" && (
@@ -147,248 +158,173 @@ function MetricCard({ title, value, icon }) {
   );
 }
 
-// Services Card Full
-function ServicesCardFull({ services, setServices }) {
-  const [adding, setAdding] = useState(false);
+// Services with Modal 2
+// Services with Modal 2
+function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, editingService, setEditingService }) {
   const [newService, setNewService] = useState({
     category: "",
     subcategory: "",
     description: "",
     price: 0,
     availability: "",
+    location: "",
   });
 
-  const handleAddService = async () => {
-    if (!newService.category || !newService.subcategory || !newService.description || !newService.price || !newService.availability) {
-      alert("Please fill all fields");
+  const openAddModal = () => {
+    setEditingService(null);
+    setNewService({ category: "", subcategory: "", description: "", price: 0, availability: "", location: "" });
+    setModalOpen(true);
+  };
+
+  const openEditModal = (service) => {
+    setEditingService(service);
+    setNewService(service);
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!newService.category || !newService.subcategory || !newService.description || !newService.price || !newService.availability || !newService.location) {
+      alert("Please fill all fields including availability and location");
       return;
     }
+
     try {
-      const res = await createService(newService);
-      setServices([...services, res.data]);
-      setAdding(false);
-      setNewService({ category: "", subcategory: "", description: "", price: 0, availability: "" });
+      if (editingService) {
+        await updateService(editingService.id, newService);
+        setServices(services.map(s => s.id === editingService.id ? newService : s));
+      } else {
+        const res = await createService(newService);
+        setServices([...services, res.data]);
+      }
+      setModalOpen(false);
+      setNewService({ category: "", subcategory: "", description: "", price: 0, availability: "", location: "" });
     } catch (err) {
       console.error(err);
-      alert("Failed to add service.");
+      alert("Failed to save service.");
     }
   };
 
   return (
     <div className="mt-6">
       <button
-        onClick={() => setAdding(!adding)}
+        onClick={openAddModal}
         className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition mb-4"
       >
-        {adding ? "Cancel" : "Add Service"}
+        Add Service
       </button>
-
-      {adding && (
-        <div className="bg-white border rounded-xl p-5 mb-6 shadow-md flex flex-col gap-3" style={{ borderColor: rustBrown + "40" }}>
-          {/* Category */}
-          <select
-            value={newService.category}
-            onChange={(e) => setNewService({ ...newService, category: e.target.value, subcategory: "" })}
-            className="w-full px-4 py-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Select Category</option>
-            <option value="Plumbing">Plumbing</option>
-            <option value="Electrical">Electrical</option>
-            <option value="Carpentry">Carpentry</option>
-            <option value="Cleaning">Cleaning</option>
-          </select>
-
-          {/* Subcategory */}
-          <select
-            value={newService.subcategory}
-            onChange={(e) => setNewService({ ...newService, subcategory: e.target.value })}
-            className="w-full px-4 py-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Select Subcategory</option>
-            {newService.category === "Plumbing" && (
-              <>
-                <option value="Pipe Repair">Pipe Repair</option>
-                <option value="Faucet Installation">Faucet Installation</option>
-              </>
-            )}
-            {newService.category === "Electrical" && (
-              <>
-                <option value="Wiring">Wiring</option>
-                <option value="Appliance Repair">Appliance Repair</option>
-              </>
-            )}
-            {newService.category === "Carpentry" && <option value="Furniture Repair">Furniture Repair</option>}
-            {newService.category === "Cleaning" && <option value="Home Cleaning">Home Cleaning</option>}
-          </select>
-
-          <textarea
-            value={newService.description}
-            onChange={(e) => setNewService({ ...newService, description: e.target.value })}
-            placeholder="Describe your services"
-            className="w-full px-4 py-3 rounded-md border border-gray-300 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            rows={4}
-          />
-
-          <input
-            type="number"
-            placeholder="Service Price"
-            value={newService.price}
-            onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) })}
-            className="w-full px-4 py-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-
-          <input
-            type="text"
-            placeholder="Availability (e.g., Mon-Fri 9:00-18:00)"
-            value={newService.availability}
-            onChange={(e) => setNewService({ ...newService, availability: e.target.value })}
-            className="w-full px-4 py-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-
-          <button
-            onClick={handleAddService}
-            className="px-2 py-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
-          >
-            Save Service
-          </button>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {services.map(service => (
-          <ServiceCard key={service.id} service={service} services={services} setServices={setServices} />
+          <div key={service.id} className="bg-white border rounded-xl p-5 shadow hover:shadow-lg transition" style={{ borderColor: rustBrown + "40" }}>
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold">{service.category} - {service.subcategory}</h3>
+              
+            </div>
+            <p className="text-sm mt-2">{service.description}</p><br></br>
+            <b><p className="text-sm text-black/60">Availability: {service.availability}</p> {/* Display Availability */}
+            </b><br></br>
+            <p className="text-sm text-black/60">Location: {service.location}</p>
+            <p className="font-semibold text-lg mt-2">₹{service.price}</p>
+            
+            <div className="ml-30 flex gap-3">
+                <button onClick={() => openEditModal(service)} className="bg-gray-600 text-white px-3 py-1 rounded">Edit</button>
+                <button onClick={async () => {
+                  if (!window.confirm("Delete service?")) return;
+                  await deleteService(service.id);
+                  setServices(services.filter(s => s.id !== service.id));
+                }} className="bg-[#B7410E] text-white px-3 py-1 rounded">Delete</button>
+              </div>
+          </div>
         ))}
       </div>
-    </div>
-  );
-}
 
-// Service Card Component
-function ServiceCard({ service, services, setServices }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({ ...service });
+      {/* Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-lg relative">
+            <button onClick={() => setModalOpen(false)} className="absolute top-3 right-3 text-gray-600 hover:text-gray-800 text-xl">&times;</button>
+            <h2 className="text-xl font-bold mb-4">{editingService ? "Edit Service" : "Add Service"}</h2>
 
-  const icon =
-    service.category.toLowerCase() === "carpentry" ? <GiHammerNails style={{ color: rustBrown }} /> :
-    service.category.toLowerCase() === "electrical" ? <GiElectric style={{ color: rustBrown }} /> :
-    service.category.toLowerCase() === "cleaning" ? <GiBroom style={{ color: rustBrown }} /> :
-    <GiHammerNails style={{ color: rustBrown }} />;
+            <select
+              value={newService.category}
+              onChange={(e) => setNewService({ ...newService, category: e.target.value, subcategory: "" })}
+              className="w-full px-4 py-2 mb-3 border rounded-md"
+            >
+              <option value="">Select Category</option>
+              <option value="Plumbing">Plumbing</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Carpentry">Carpentry</option>
+              <option value="Cleaning">Cleaning</option>
+            </select>
 
-  const handleSave = async () => {
-    if (!editData.category || !editData.subcategory || !editData.description || !editData.price || !editData.availability) {
-      alert("Please fill all fields");
-      return;
-    }
-    try {
-      await updateService(service.id, editData);
-      setServices(services.map(s => (s.id === service.id ? editData : s)));
-      setIsEditing(false);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update service.");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this service?")) return;
-    try {
-      await deleteService(service.id);
-      setServices(services.filter(s => s.id !== service.id));
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete service.");
-    }
-  };
-
-  return (
-    <div className="flex flex-col justify-between bg-white border p-5 rounded-xl hover:shadow-lg transition" style={{ borderColor: rustBrown + "40" }}>
-      <div className="flex items-center gap-3 mb-3">
-        <div className="text-2xl">{icon}</div>
-        <h3 className="font-bold text-lg">
-          {service.category} - {service.subcategory}
-        </h3>
-      </div>
-
-      {isEditing ? (
-        <div className="flex flex-col gap-2 mb-4">
-          <select
-            value={editData.category}
-            onChange={(e) => setEditData({ ...editData, category: e.target.value, subcategory: "" })}
-            className="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Select Category</option>
-            <option value="Plumbing">Plumbing</option>
-            <option value="Electrical">Electrical</option>
-            <option value="Carpentry">Carpentry</option>
-            <option value="Cleaning">Cleaning</option>
-          </select>
-
-          <select
-            value={editData.subcategory}
-            onChange={(e) => setEditData({ ...editData, subcategory: e.target.value })}
-            className="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Select Subcategory</option>
-            {editData.category === "Plumbing" && (
-              <>
+            <select
+              value={newService.subcategory}
+              onChange={(e) => setNewService({ ...newService, subcategory: e.target.value })}
+              className="w-full px-4 py-2 mb-3 border rounded-md"
+            >
+              <option value="">Select Subcategory</option>
+              {newService.category === "Plumbing" && <>
                 <option value="Pipe Repair">Pipe Repair</option>
                 <option value="Faucet Installation">Faucet Installation</option>
-              </>
-            )}
-            {editData.category === "Electrical" && (
-              <>
+              </>}
+              {newService.category === "Electrical" && <>
                 <option value="Wiring">Wiring</option>
                 <option value="Appliance Repair">Appliance Repair</option>
-              </>
-            )}
-            {editData.category === "Carpentry" && <option value="Furniture Repair">Furniture Repair</option>}
-            {editData.category === "Cleaning" && <option value="Home Cleaning">Home Cleaning</option>}
-          </select>
+              </>}
+              {newService.category === "Carpentry" && <option value="Furniture Repair">Furniture Repair</option>}
+              {newService.category === "Cleaning" && <option value="Home Cleaning">Home Cleaning</option>}
+            </select>
 
-          <textarea
-            value={editData.description}
-            onChange={e => setEditData({ ...editData, description: e.target.value })}
-            className="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-            rows={3}
-          />
+            <textarea
+              value={newService.description}
+              onChange={(e) => setNewService({ ...newService, description: e.target.value })}
+              placeholder="Description"
+              className="w-full px-4 py-2 mb-3 border rounded-md resize-none"
+              rows={3}
+            />
+            <input
+              type="number"
+              value={newService.price}
+              onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) })}
+              placeholder="Price"
+              className="w-full px-4 py-2 mb-3 border rounded-md"
+            />
+            <input
+              type="text"
+              value={newService.availability}
+              onChange={(e) => setNewService({ ...newService, availability: e.target.value })}
+              placeholder="Availability"
+              className="w-full px-4 py-2 mb-3 border rounded-md"
+            />
 
-          <input
-            type="number"
-            value={editData.price}
-            onChange={e => setEditData({ ...editData, price: parseFloat(e.target.value) })}
-            className="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={newService.location}
+                onChange={(e) => setNewService({ ...newService, location: e.target.value })}
+                placeholder="Location"
+                className="flex-1 px-4 py-2 border rounded-md"
+              />
+              <button onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(async pos => {
+                    const { latitude, longitude } = pos.coords;
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+                    const data = await res.json();
+                    setNewService(prev => ({ ...prev, location: data.display_name || `Lat: ${latitude}, Lon: ${longitude}` }));
+                  });
+                } else alert("Geolocation not supported");
+              }} className="px-2 py-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105">Use Current</button>
+            </div>
 
-          <input
-            type="text"
-            value={editData.availability}
-            onChange={e => setEditData({ ...editData, availability: e.target.value })}
-            className="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+            <button onClick={handleSave} className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">{editingService ? "Update Service" : "Add Service"}</button>
+          </div>
         </div>
-      ) : (
-        <p className="text-sm text-black/70 mb-4">{service.description}</p>
       )}
-
-      <div className="flex justify-between items-center">
-        {!isEditing && <span className="font-semibold text-black text-lg">₹{service.price}</span>}
-        <div className="flex gap-2">
-          {isEditing ? (
-            <>
-              <button onClick={handleSave} className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition">Save</button>
-              <button onClick={() => setIsEditing(false)} className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition">Cancel</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => setIsEditing(true)} className="bg-[#4B5563] text-white px-3 py-1 rounded hover:bg-[#374151] transition">Edit</button>
-              <button onClick={handleDelete} className="bg-[#B7410E] text-white px-3 py-1 rounded hover:bg-[#8a300b] transition">Delete</button>
-            </>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
+
 
 // Service Performance
 function ServicePerformance({ services, bookings }) {
