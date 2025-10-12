@@ -14,6 +14,8 @@ import { register } from "../../services/api";
 export default function Registration() {
   const [fullname, setFullname] = useState("");
   const [location, setLocation] = useState("");
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("CUSTOMER");
@@ -30,18 +32,45 @@ export default function Registration() {
 
   const navigate = useNavigate();
 
-  // 🌍 Capture current location with address (reverse geocoding)
+  // 🌍 Get coordinates from location string
+  const getCoordinatesFromLocation = async (loc) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          loc
+        )}&format=json&limit=1`
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        setLatitude(data[0].lat);
+        setLongitude(data[0].lon);
+      } else {
+        setLatitude(null);
+        setLongitude(null);
+      }
+    } catch (err) {
+      console.error("Error getting coordinates:", err);
+      setLatitude(null);
+      setLongitude(null);
+    }
+  };
+
+  // 🌍 Capture current location with address
   const handleUseCurrentLocation = async () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const { latitude, longitude } = pos.coords;
+          setLatitude(latitude);
+          setLongitude(longitude);
           try {
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
             );
             const data = await response.json();
-            setLocation(data.display_name || `Lat: ${latitude}, Lon: ${longitude}`);
+            setLocation(
+              data.display_name || `Lat: ${latitude}, Lon: ${longitude}`
+            );
           } catch (error) {
             console.error("Error getting address:", error);
             alert("Failed to retrieve location details.");
@@ -69,6 +98,11 @@ export default function Registration() {
       return;
     }
 
+    // Get coordinates if user entered location manually
+    if (!latitude || !longitude) {
+      await getCoordinatesFromLocation(location);
+    }
+
     if (
       role === "PROVIDER" &&
       (!category || !subcategory || !description || !price || !availability)
@@ -84,6 +118,8 @@ export default function Registration() {
       password,
       role,
       location,
+      latitude,
+      longitude,
       category,
       subcategory,
       description,
