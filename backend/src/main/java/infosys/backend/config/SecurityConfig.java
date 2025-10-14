@@ -34,9 +34,15 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
             .requestMatchers(HttpMethod.GET, "/api/services").permitAll()  // public listing
             // Protected endpoints
             .requestMatchers("/api/services/**").authenticated()           // all service modifications require login
-            .requestMatchers("/api/users/**").authenticated()              // all user management require login
+            .requestMatchers("/api/users/**").authenticated()  
+            // Only CUSTOMER can create bookings
+            .requestMatchers("/bookings/**").authenticated()
+            // Only authenticated users can see reviews
+            .requestMatchers("/reviews/provider/**").authenticated()  // any logged-in user can view reviews
+            .requestMatchers("/reviews/add").authenticated()          // all user management require login
             // Any other endpoints require authentication
             .anyRequest().authenticated()
+            
         );
 
     http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
