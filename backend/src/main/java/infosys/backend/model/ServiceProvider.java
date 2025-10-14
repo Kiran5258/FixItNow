@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = "provider")
 public class ServiceProvider {
 
     @Id
@@ -22,24 +25,27 @@ public class ServiceProvider {
     // Provider offering the service
     @ManyToOne
     @JoinColumn(name = "provider_id", referencedColumnName = "id", nullable = false)
+    @JsonBackReference
     private User provider;
 
     @Column(nullable = false)
-    private String category;      // e.g., Electrician, Plumber
+    private String category; // e.g., Electrician, Plumber
 
-    private String subcategory;   // e.g., Wiring, AC repair
+    private String subcategory; // e.g., Wiring, AC repair
 
     @Column(columnDefinition = "TEXT")
-    private String description;   // Detailed service description
+    private String description; // Detailed service description
 
     @Column(nullable = false)
-    private BigDecimal price;     // Service price (better precision than Double)
+    private BigDecimal price; // Service price (better precision than Double)
 
-    private String availability;  // Could be JSON string or formatted text
+    private String availability; // Could be JSON string or formatted text
 
-    private String location;      // Human-readable location
+    private String location; // Human-readable location
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;  // Auto-generated timestamp
+    private LocalDateTime createdAt; // Auto-generated timestamp
+
+    
 }

@@ -48,6 +48,9 @@ public class UserService {
 
     // 🔹 Delete user
     public void deleteUser(Long id) {
-        userRepository.deleteById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        userRepository.delete(user); // Now also deletes services
     }
+
 }

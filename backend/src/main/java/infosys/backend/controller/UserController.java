@@ -34,7 +34,7 @@ public class UserController {
         return ResponseEntity.ok(providers);
     }
 
-    @PreAuthorize("hasRole('PROVIDER')")
+    @PreAuthorize("hasRole('PROVIDER') or hasRole('CUSTOMER') or hasRole('ADMIN')")
     @GetMapping("/me")
     public ResponseEntity<User> getMyProfile(Authentication auth) {
         User user = (User) auth.getPrincipal();
@@ -71,7 +71,7 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUser(id, updatedUser));
     }
 
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('PROVIDER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id, Authentication auth) {
         User currentUser = (User) auth.getPrincipal();

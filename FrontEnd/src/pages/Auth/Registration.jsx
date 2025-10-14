@@ -17,10 +17,12 @@ export default function Registration() {
 
   // User fields
   const [fullname, setFullname] = useState("");
+  const [location, setLocation] = useState("");
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("CUSTOMER");
-  const [location, setLocation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,19 +34,53 @@ export default function Registration() {
   const [price, setPrice] = useState("");
   const [availability, setAvailability] = useState("");
 
-  // Created profile preview (for PROVIDER)
-  const [createdProfile, setCreatedProfile] = useState(null);
+  // 🌍 Get coordinates from location string
+  const getCoordinatesFromLocation = async (loc) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          loc
+        )}&format=json&limit=1`
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        setLatitude(data[0].lat);
+        setLongitude(data[0].lon);
+      } else {
+        setLatitude(null);
+        setLongitude(null);
+      }
+    } catch (err) {
+      console.error("Error getting coordinates:", err);
+      setLatitude(null);
+      setLongitude(null);
+    }
+  };
 
-  // 🌍 Get current location
-  const handleUseCurrentLocation = () => {
+  // 🌍 Capture current location with address
+  const handleUseCurrentLocation = async () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const { latitude, longitude } = pos.coords;
-          setLocation(`Lat: ${latitude}, Lng: ${longitude}`);
+          setLatitude(latitude);
+          setLongitude(longitude);
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
+            const data = await response.json();
+            setLocation(
+              data.display_name || `Lat: ${latitude}, Lon: ${longitude}`
+            );
+          } catch (error) {
+            console.error("Error getting address:", error);
+            alert("Failed to retrieve location details.");
+          }
         },
-        () => {
-          toast.error("Unable to fetch location. Please enter manually.");
+        (error) => {
+          console.error("Geolocation error:", error);
+          alert("Please allow location access.");
         }
       );
     } else {
@@ -60,22 +96,23 @@ export default function Registration() {
 
     // Basic validations
     if (!fullname || !email || !password || !location) {
-      setError("Please fill all required fields.");
+      setError("Please fill all required fields");
       setLoading(false);
       return;
     }
 
-    if (role === "PROVIDER") {
-      if (!category || !subcategory || !description || !price || !availability) {
-        setError("Please fill all provider fields.");
-        setLoading(false);
-        return;
-      }
-      if (parseFloat(price) <= 0) {
-        setError("Price must be greater than 0.");
-        setLoading(false);
-        return;
-      }
+    // Get coordinates if user entered location manually
+    if (!latitude || !longitude) {
+      await getCoordinatesFromLocation(location);
+    }
+
+    if (
+      role === "PROVIDER" &&
+      (!category || !subcategory || !description || !price || !availability)
+    ) {
+      setError("Please fill all provider fields");
+      setLoading(false);
+      return;
     }
 
     const userData = {
@@ -84,21 +121,26 @@ export default function Registration() {
       password,
       role,
       location,
-      category: role === "PROVIDER" ? category : undefined,
-      subcategory: role === "PROVIDER" ? subcategory : undefined,
-      description: role === "PROVIDER" ? description : undefined,
+      latitude,
+      longitude,
+      category,
+      subcategory,
+      description,
       price: role === "PROVIDER" ? parseFloat(price) : undefined,
       availability: role === "PROVIDER" ? availability : undefined,
     };
 
     try {
-      const res = await register(userData);
-      toast.success("Registration successful!");
-      if (role === "PROVIDER") setCreatedProfile(userData);
+      await register(userData);
+      alert("Registration successful!");
       navigate("/login");
     } catch (err) {
       console.error("Registration error:", err);
-      setError(err.response?.data?.message || "Registration failed");
+      if (err.response?.status === 409) {
+        setError("Email already exists. Please use a different email.");
+      } else {
+        setError(err.response?.data?.message || "Registration failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -106,6 +148,7 @@ export default function Registration() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden">
+      {/* Background */}
       <div
         className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
         style={{ backgroundImage: "url('/tools.jpeg')" }}
@@ -121,6 +164,7 @@ export default function Registration() {
         <span className="text-white font-bold text-xl">FixItNow</span>
       </div>
 
+      {/* Form Container */}
       <div className="relative z-10 w-full max-w-md flex flex-col items-center px-6 py-8 
         rounded-xl backdrop-blur-md shadow-2xl">
 
@@ -199,8 +243,8 @@ export default function Registration() {
             onChange={(e) => setRole(e.target.value)}
             className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option className="bg-black text-white" value="CUSTOMER">Customer</option>
-            <option className="bg-black text-white" value="PROVIDER">Provider</option>
+            <option className="bg-white text-black" value="CUSTOMER">Customer</option>
+            <option className="bg-white text-black" value="PROVIDER">Provider</option>
           </select>
 
           {/* Provider fields */}
@@ -211,11 +255,11 @@ export default function Registration() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">Select Category</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Carpentry">Carpentry</option>
-                <option value="Cleaning">Cleaning</option>
+                <option className="bg-white text-black" value="">Select Category</option>
+                <option className="bg-white text-black" value="Plumbing">Plumbing</option>
+                <option className="bg-white text-black" value="Electrical">Electrical</option>
+                <option className="bg-white text-black" value="Carpentry">Carpentry</option>
+                <option className="bg-white text-black" value="Cleaning">Cleaning</option>
               </select>
 
               <select
@@ -223,21 +267,21 @@ export default function Registration() {
                 onChange={(e) => setSubcategory(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">Select Subcategory</option>
+                <option  className="bg-white text-black" value="">Select Subcategory</option>
                 {category === "Plumbing" && (
                   <>
-                    <option value="Pipe Repair">Pipe Repair</option>
-                    <option value="Faucet Installation">Faucet Installation</option>
+                    <option  className="bg-white text-black" value="Pipe Repair">Pipe Repair</option>
+                    <option  className="bg-white text-black" value="Faucet Installation">Faucet Installation</option>
                   </>
                 )}
                 {category === "Electrical" && (
                   <>
-                    <option value="Wiring">Wiring</option>
-                    <option value="Appliance Repair">Appliance Repair</option>
+                    <option  className="bg-white text-black" value="Wiring">Wiring</option>
+                    <option  className="bg-white text-black" value="Appliance Repair">Appliance Repair</option>
                   </>
                 )}
-                {category === "Carpentry" && <option value="Furniture Repair">Furniture Repair</option>}
-                {category === "Cleaning" && <option value="Home Cleaning">Home Cleaning</option>}
+                {category === "Carpentry" && <option  className="bg-white text-black" value="Furniture Repair">Furniture Repair</option>}
+                {category === "Cleaning" && <option  className="bg-white text-black" value="Home Cleaning">Home Cleaning</option>}
               </select>
 
               <textarea
@@ -278,19 +322,6 @@ export default function Registration() {
             {loading ? "Submitting..." : "Sign Up"}
           </button>
         </form>
-
-        {/* Provider profile preview */}
-        {createdProfile && (
-          <div className="mt-6 p-4 bg-white/10 rounded-lg text-white w-full">
-            <h3 className="text-xl font-bold">
-              {createdProfile.category} - {createdProfile.subcategory}
-            </h3>
-            <p>{createdProfile.description}</p>
-            <p>Price: ₹{createdProfile.price}</p>
-            <p>Availability: {createdProfile.availability}</p>
-            <p>Location: {createdProfile.location}</p>
-          </div>
-        )}
 
         {/* Login link */}
         <p className="text-white text-sm mt-6">

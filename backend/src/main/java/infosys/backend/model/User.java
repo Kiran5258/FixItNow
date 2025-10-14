@@ -1,8 +1,11 @@
 package infosys.backend.model;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
+
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import infosys.backend.enums.Role;
 import jakarta.persistence.*;
@@ -14,6 +17,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = "services")
 public class User {
 
     @Id
@@ -37,6 +41,8 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    
+    @OneToMany(mappedBy = "provider", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.EAGER)
+    @JsonManagedReference
+    private List<ServiceProvider> services;
 
 }
