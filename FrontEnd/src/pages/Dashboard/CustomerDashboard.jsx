@@ -1,19 +1,17 @@
 // src/pages/Dashboard/CustomerDashboard.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  FiHome,
-  FiLogOut,
-  FiSearch,
-  FiClipboard,
-  FiStar,
-  FiUser,
-  FiMapPin,
-} from "react-icons/fi";
+import { FiHome, FiLogOut, FiUser } from "react-icons/fi";
 import { MdMiscellaneousServices } from "react-icons/md";
 import { BiHistory } from "react-icons/bi";
-import { getAllServices, getMyProfile } from "../../services/api";
-import MapView from "../../components/MapView";
+
+import { getAllServices, getMyProfile, createBooking } from "../../services/api";
+
+// Tab components
+import HomeTab from "../../components/HomeTab";
+import ServicesTab from "../../components/ServicesTab";
+import BookingsTab from "../../components/BookingsTab";
+import ProfileTab from "../../components/ProfileTab";
 
 // --- 🔁 Simple geocode cache to prevent re-fetching same locations
 const geoCache = {};
@@ -23,9 +21,7 @@ const geocodeLocation = async (location) => {
   if (geoCache[location]) return geoCache[location]; // use cached
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        location
-      )}`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`
     );
     const data = await res.json();
     if (data && data.length > 0) {
@@ -43,6 +39,36 @@ const geocodeLocation = async (location) => {
 };
 
 const rustBrown = "#6e290cff";
+
+const handleBookService = async (service, selectedDate, selectedTimeSlot) => {
+  if (!customer) return;
+
+  if (service.availability?.toLowerCase() === "not available") {
+    alert("This service is not available right now.");
+    return;
+  }
+
+  try {
+    const bookingPayload = {
+      booking_date: selectedDate, // YYYY-MM-DD
+      time_slot: selectedTimeSlot,
+      created_at: new Date().toISOString(),
+      status: "CONFIRMED",
+      customer_id: customer.id,
+      provider_id: service.providerId || service.provider_id,
+      service_id: service.id,
+    };
+
+    const res = await createBooking(bookingPayload);
+
+    setBookings((prev) => [...prev, res.data]);
+    alert("Booking successful!");
+  } catch (err) {
+    console.error("Error booking service:", err);
+    alert("Failed to book service. Try again.");
+  }
+};
+
 
 export default function CustomerDashboard() {
   const navigate = useNavigate();
@@ -64,12 +90,8 @@ export default function CustomerDashboard() {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        const [profileRes, servicesRes] = await Promise.all([
-          getMyProfile(),
-          getAllServices(),
-        ]);
+        const [profileRes, servicesRes] = await Promise.all([getMyProfile(), getAllServices()]);
 
-        // Profile setup
         const user = profileRes.data;
         setCustomer(user);
         setEditProfileData({
@@ -78,18 +100,15 @@ export default function CustomerDashboard() {
           location: user.location || "",
         });
 
-        // Step 1: show services instantly
         setServices(servicesRes.data);
 
-        // Step 2: geocode lazily in background
+        // Lazy geocoding
         Promise.all(
           servicesRes.data.map(async (s) => {
             const coords = await geocodeLocation(s.location);
             return { ...s, ...coords };
           })
-        ).then((updated) => {
-          setServices(updated);
-        });
+        ).then((updated) => setServices(updated));
 
         // Dummy bookings
         setBookings([
@@ -122,6 +141,32 @@ export default function CustomerDashboard() {
   const handleCancelProfile = () => {
     setEditProfileData({ ...customer });
     setIsEditingProfile(false);
+  };
+
+  const handleBookService = async (service) => {
+    if (!customer) return;
+
+    if (service.availability?.toLowerCase() === "not available") {
+      alert("This service is not available right now.");
+      return;
+    }
+
+    try {
+      const bookingPayload = {
+        customerId: customer.id,
+        serviceId: service.id,
+        serviceName: service.subcategory,
+        providerName: service.providerName,
+        status: "Confirmed",
+      };
+
+      const res = await createBooking(bookingPayload);
+      setBookings((prev) => [...prev, res.data]);
+      alert("Booking successful!");
+    } catch (err) {
+      console.error("Error booking service:", err);
+      alert("Failed to book service. Try again.");
+    }
   };
 
   const sidebarItems = [
@@ -174,9 +219,15 @@ export default function CustomerDashboard() {
           Loading dashboard...
         </div>
       ) : (
-        <main className="flex-1 p-6 overflow-y-auto"> {/* HOME TAB */} {activeTab === "home" && customer && ( <div className="space-y-6"> <h1 className="text-3xl font-bold mb-4">Welcome, {customer.name} 👋</h1> {/* Metrics */} <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> <MetricCard title="Total Bookings" value={bookings.length} icon={<FiClipboard style={{ color: rustBrown }} />} /> <MetricCard title="Available Services" value={services.length} icon={<MdMiscellaneousServices style={{ color: rustBrown }} />} /> <MetricCard title="Avg. Rating" value={"4.6"} icon={<FiStar style={{ color: rustBrown }} />} /> </div> {/* Top Providers */} <div className="bg-white p-6 rounded-xl shadow-md"> <h2 className="text-xl font-semibold mb-4" style={{ color: rustBrown }}>Top Providers Near You</h2> <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {services.slice(0, 4).map((s) => ( <div key={s.id} className="flex justify-between items-center p-4 rounded-lg shadow hover:shadow-lg transition bg-gradient-to-r from-orange-50 to-white"> <div> <p className="font-bold">{s.providerName}</p> <p className="text-sm text-gray-600">{s.category}</p> </div> <span className="text-yellow-500 font-semibold">★ {s.rating}</span> </div> ))} </div> </div> {/* Upcoming Bookings */} <div className="bg-white p-6 rounded-xl shadow-md"> <h2 className="text-xl font-semibold mb-4" style={{ color: rustBrown }}>Upcoming Bookings</h2> {bookings.filter(b => b.status === "Confirmed").slice(0, 3).map((b) => ( <div key={b.id} className="flex justify-between py-2 border-b last:border-b-0"> <p className="font-medium">{b.service}</p> <span className="text-sm text-gray-600">{b.provider}</span> </div> ))} {bookings.filter(b => b.status === "Confirmed").length === 0 && ( <p className="text-gray-500">No upcoming bookings</p> )} </div> {/* Recommended Services */} <div> <h2 className="text-xl font-semibold mb-4" style={{ color: rustBrown }}>Recommended For You</h2> <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> {services.slice(0, 3).map((s) => ( <div key={s.id} className="p-4 rounded-xl shadow-md bg-gradient-to-br from-indigo-50 to-white hover:shadow-lg transition"> <p className="font-bold text-lg">{s.category}</p> <p className="text-sm text-gray-600">{s.subcategory}</p> <button className="mt-2 text-blue-600 hover:underline font-semibold">Book Now →</button> </div> ))} </div> </div> {/* Daily Tip */} <div className="bg-gradient-to-r from-blue-100 to-indigo-50 p-6 rounded-xl flex justify-between items-center shadow-md hover:shadow-lg transition"> <div> <h3 className="font-bold text-lg">Today's Tip 🌤️</h3> <p className="text-gray-700">It’s sunny today! Perfect time to get your solar panel cleaned.</p> </div> <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"> Find Nearby Services </button> </div> </div> )}
-
-          {/* SERVICES TAB */}
+        <main className="flex-1 p-6 overflow-y-auto">
+          {activeTab === "home" && (
+            <HomeTab
+              customer={customer}
+              bookings={bookings}
+              services={services}
+              handleBookService={handleBookService}
+            />
+          )}
           {activeTab === "services" && (
             <ServicesTab
               services={filteredServices}
@@ -186,14 +237,11 @@ export default function CustomerDashboard() {
               setCategorySearch={setCategorySearch}
               locationSearch={locationSearch}
               setLocationSearch={setLocationSearch}
+              handleBookService={handleBookService}
             />
           )}
-
-          {/* BOOKINGS TAB */}
           {activeTab === "bookings" && <BookingsTab bookings={bookings} />}
-
-          {/* PROFILE TAB */}
-          {activeTab === "profile" && customer && (
+          {activeTab === "profile" && (
             <ProfileTab
               customer={customer}
               isEditingProfile={isEditingProfile}
@@ -205,343 +253,6 @@ export default function CustomerDashboard() {
             />
           )}
         </main>
-      )}
-    </div>
-  );
-}
-
-/* ----------------- COMPONENTS ----------------- */
-
-function MetricCard({ title, value, icon }) {
-  return (
-    <div className="bg-white border p-5 rounded-xl shadow-md flex flex-col items-center justify-center gap-2 hover:shadow-lg transition">
-      <div className="text-3xl">{icon}</div>
-      <h2 className="text-xl font-bold">{value}</h2>
-      <p className="text-sm text-gray-600">{title}</p>
-    </div>
-  );
-}
-
-function ServicesTab({
-  services,
-  hoveredServiceId,
-  setHoveredServiceId,
-  categorySearch,
-  setCategorySearch,
-  locationSearch,
-  setLocationSearch,
-}) {
-  const [mapCenter, setMapCenter] = useState(null);
-  const mapRef = useRef(null);
-
-  useEffect(() => {
-    if (mapCenter && mapRef.current) {
-      mapRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [mapCenter]);
-
-  return (
-    <div className="p-8 bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen">
-      <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          Find Trusted Professionals Near You
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto">
-          Discover verified service providers — electricians, plumbers, carpenters, and more.
-        </p>
-      </div>
-
-      {/* Search Fields */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-10 max-w-4xl mx-auto">
-        <SearchInput
-          icon={<FiSearch />}
-          placeholder="Search by category..."
-          value={categorySearch}
-          onChange={setCategorySearch}
-        />
-        <SearchInput
-          icon={<FiMapPin />}
-          placeholder="Search by location..."
-          value={locationSearch}
-          onChange={setLocationSearch}
-        />
-      </div>
-
-      {/* Map */}
-      <div className="mb-10 max-w-6xl mx-auto" ref={mapRef}>
-        <MapView
-          services={services}
-          hoveredServiceId={hoveredServiceId}
-          center={mapCenter}
-        />
-      </div>
-
-      {/* Service Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-        {services.map((service) => (
-          <ServiceCard
-            key={service.id}
-            service={service}
-            setMapCenter={setMapCenter}
-            setHoveredServiceId={setHoveredServiceId}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ServiceCard({ service, setMapCenter, setHoveredServiceId }) {
-  const isNotAvailable = service.availability?.toLowerCase() === "not available";
-
-  const handleViewLocation = () => {
-    if (service.latitude && service.longitude) {
-      setMapCenter({ lat: service.latitude, lon: service.longitude });
-      setHoveredServiceId(service.id);
-    } else {
-      alert("Location not available for this service.");
-    }
-  };
-
-  return (
-    <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-md hover:shadow-xl transition-transform transform hover:-translate-y-1 hover:scale-[1.02] border border-gray-100 flex flex-col justify-between h-full min-h-[340px]">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full shadow-sm">
-          <FiSearch className="text-blue-700 text-sm" />
-          <span className="text-sm font-semibold text-blue-800">
-            {service.category}
-          </span>
-        </div>
-      </div>
-
-      <h3 className="text-lg font-bold text-gray-900 mb-1 truncate">
-        {service.subcategory}
-      </h3>
-      <p className="text-sm text-gray-600 mb-4">
-        Description: {service.description}
-      </p>
-
-      <div className="text-sm text-gray-600 space-y-1 mb-4">
-        <p className="flex items-center gap-1 truncate">
-          <FiUser className="text-gray-400" />{" "}
-          {service.providerName || service.name}
-        </p>
-        {service.location && (
-          <p className="flex items-center gap-1">📍 {service.location}</p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2 mb-3">
-        <span
-          className={`w-3 h-3 rounded-full ${
-            isNotAvailable ? "bg-gray-400" : "bg-green-500 animate-pulse"
-          }`}
-        />
-        <span className="text-xs font-medium">
-          {isNotAvailable ? "Not Available" : service.availability}
-        </span>
-      </div>
-
-      <button
-        onClick={handleViewLocation}
-        className="w-full mb-4 text-sm font-semibold text-blue-600 hover:underline flex items-center justify-center gap-1"
-      >
-        <FiMapPin /> View Location
-      </button>
-
-      <div className="border-t border-gray-100 my-3"></div>
-
-      <div className="flex justify-between items-center mt-auto">
-        <span className="font-bold text-blue-600 text-lg">₹{service.price}</span>
-        <button
-          className={`px-6 py-2.5 rounded-full font-semibold text-white shadow-md transition-all ${
-            isNotAvailable
-              ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-              : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-indigo-700 hover:to-blue-700"
-          }`}
-          disabled={isNotAvailable}
-        >
-          {isNotAvailable ? "Unavailable" : "Book Now"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function BookingsTab({ bookings }) {
-  return (
-    <div className="bg-white p-6 rounded-xl border shadow">
-      <h2 className="text-xl font-semibold mb-3" style={{ color: "#6e290cff" }}>
-        My Bookings
-      </h2>
-      <div className="divide-y divide-gray-200">
-        {bookings.map((b) => (
-          <div key={b.id} className="flex justify-between py-3">
-            <div>
-              <p className="font-medium">{b.service}</p>
-              <p className="text-sm text-gray-600">Provider: {b.provider}</p>
-            </div>
-            <span className="px-3 py-1 text-sm rounded-full bg-gray-100">
-              {b.status}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SearchInput({ icon, placeholder, value, onChange }) {
-  return (
-    <div className="relative flex-1">
-      <div className="absolute top-1/2 left-4 -translate-y-1/2 text-gray-400">
-        {icon}
-      </div>
-      <input
-        type="text"
-        placeholder={placeholder}
-        className="w-full pl-10 pr-4 py-2 rounded-full border focus:ring-2 focus:ring-blue-400 outline-none text-sm sm:text-base"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
-
-function ProfileTab({
-  customer,
-  isEditingProfile,
-  setIsEditingProfile,
-  editProfileData,
-  setEditProfileData,
-  handleSaveProfile,
-  handleCancelProfile,
-}) {
-  const rustBrown = "#6e290cff";
-
-  return (
-    <div className="flex justify-start px-8 py-6">
-      {customer && (
-        <div className="bg-white p-6 rounded-xl border shadow w-full max-w-md ">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: rustBrown }}>
-            My Profile
-          </h2>
-
-          <div className="flex flex-col gap-2">
-            <p>
-              <strong>Name:</strong> {customer.name}
-            </p>
-            <p>
-              <strong>Email:</strong> {customer.email}
-            </p>
-            <p>
-              <strong>Location:</strong> {customer.location}
-            </p>
-
-            <button
-              onClick={() => setIsEditingProfile(true)}
-              className="px-2 py-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
-            >
-              Edit Profile
-            </button>
-          </div>
-
-          {/* Edit Profile Modal */}
-          {isEditingProfile && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-lg">
-                <h2 className="text-xl font-semibold mb-4">Edit Profile</h2>
-
-                {/* Name Field */}
-                <input
-                  type="text"
-                  value={editProfileData.name}
-                  onChange={(e) =>
-                    setEditProfileData({ ...editProfileData, name: e.target.value })
-                  }
-                  className="border px-3 py-2 rounded w-full mb-3"
-                  placeholder="Name"
-                />
-
-                {/* Email Field */}
-                <input
-                  type="email"
-                  value={editProfileData.email}
-                  onChange={(e) =>
-                    setEditProfileData({ ...editProfileData, email: e.target.value })
-                  }
-                  className="border px-3 py-2 rounded w-full mb-3"
-                  placeholder="Email"
-                />
-
-                {/* Location Field + Use My Location Button */}
-                <div className="flex items-center gap-2 mb-3">
-                  <input
-                    type="text"
-                    value={editProfileData.location}
-                    onChange={(e) =>
-                      setEditProfileData({ ...editProfileData, location: e.target.value })
-                    }
-                    className="border px-3 py-2 rounded flex-1"
-                    placeholder="Location"
-                  />
-
-                  <button
-                    onClick={() => {
-                      if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                          async (pos) => {
-                            const { latitude, longitude } = pos.coords;
-                            try {
-                              const response = await fetch(
-                                `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-                              );
-                              const data = await response.json();
-                              setEditProfileData((prev) => ({
-                                ...prev,
-                                location:
-                                  data.display_name ||
-                                  `Lat: ${latitude}, Lon: ${longitude}`,
-                              }));
-                            } catch (error) {
-                              console.error("Error getting address:", error);
-                              alert("Failed to retrieve location details.");
-                            }
-                          },
-                          (error) => {
-                            console.error("Geolocation error:", error);
-                            alert("Please allow location access.");
-                          }
-                        );
-                      } else {
-                        alert("Geolocation not supported.");
-                      }
-                    }}
-                    className="px-2 py-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
-                  >
-                    Use My Location
-                  </button>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 mt-2 justify-end">
-                  <button
-                    onClick={handleSaveProfile}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={handleCancelProfile}
-                    className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       )}
     </div>
   );
