@@ -1,17 +1,14 @@
-// src/components/ProtectedRoute.jsx
-import React, { useContext } from "react";
+import React from "react";
 import { Navigate } from "react-router-dom";
-import { userContext } from "../content/Userprovider";
+import { useUser } from "../content/Userprovider";
 
 const ProtectedRoute = ({ children }) => {
-  const { user } = useContext(userContext);
+  const { user, loading } = useUser();
 
-  // If no user is logged in, redirect to login page
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (loading) return <div className="text-center p-6">Loading...</div>;
 
-  // Otherwise, allow access to the requested route
+  if (!user) return <Navigate to="/login" replace />;
+
   return children;
 };
 

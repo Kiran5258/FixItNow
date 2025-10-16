@@ -53,3 +53,21 @@ export const getUserById = (id) => API.get(`/users/id/${id}`);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const deleteUser = (id) => API.delete(`/users/${id}`);
 export const getUserByEmail = (email) => API.get(`/users/email/${email}`);
+
+
+// BOOKING APIs
+export const createBooking = (data) => API.post("/bookings/create", data);
+export const getBookingsByCustomer = (customerId) =>
+  API.get(`/bookings/customer/${customerId}`);
+export const getBookingsByProvider = (providerId) =>
+  API.get(`/bookings/provider/${providerId}`);
+export const updateBookingStatus = (bookingId, status) =>
+  API.put(`/bookings/updateStatus/${bookingId}?status=${status}`);
+
+
+// REVIEW APIs
+export const addReview = (reviewData) => API.post("/reviews/add", reviewData);
+export const getReviewsByProvider = (providerId) =>
+  API.get(`/reviews/provider/${providerId}`);
+export const getProviderAverageRating = (providerId) =>
+  API.get(`/reviews/provider/${providerId}/average`);

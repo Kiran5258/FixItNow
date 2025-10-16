@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiHome, FiLogOut, FiClock, FiXCircle } from "react-icons/fi";
+import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser } from "react-icons/fi";
 import { BiClipboard } from "react-icons/bi";
-import { GiElectric, GiHammerNails, GiBroom } from "react-icons/gi";
+import { GiHammerNails } from "react-icons/gi";
 import { AiOutlineCheckCircle } from "react-icons/ai";
 import { FaRegLightbulb } from "react-icons/fa";
+
 import {
   getMyProfile,
   getServicesByProvider,
   updateService,
   deleteService,
   createService,
+  getBookingsByProvider,
+  updateBookingStatus
 } from "../../services/api";
 
 const rustBrown = "#6e290cff";
@@ -36,6 +39,9 @@ export default function ProviderDashboard() {
 
         const servicesRes = await getServicesByProvider(providerData.id);
         setServices(servicesRes.data || []);
+
+        const bookingsRes = await getBookingsByProvider(providerData.id);
+        setBookings(bookingsRes.data || []);
       } catch (err) {
         console.error("Error fetching provider data:", err);
         setError(true);
@@ -123,7 +129,7 @@ export default function ProviderDashboard() {
         )}
 
         {activeTab === "bookings" && (
-          <BookingsCard bookings={bookings} />
+          <BookingsCard bookings={bookings} setBookings={setBookings} />
         )}
       </main>
     </div>
@@ -135,7 +141,9 @@ function Greeting({ provider }) {
   const hours = new Date().getHours();
   const greeting =
     hours < 12 ? "Good Morning" :
-    hours < 18 ? "Good Afternoon" : "Good Evening";
+    hours < 16 ? "Good Afternoon" :
+    hours < 18 ? "Good Evening":
+    "Good Night";
 
   return (
     <h1 className="text-3xl font-bold mb-4" style={{ color: rustBrown }}>
@@ -158,8 +166,7 @@ function MetricCard({ title, value, icon }) {
   );
 }
 
-// Services with Modal 2
-// Services with Modal 2
+// Services Card
 function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, editingService, setEditingService }) {
   const [newService, setNewService] = useState({
     category: "",
@@ -218,27 +225,24 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
           <div key={service.id} className="bg-white border rounded-xl p-5 shadow hover:shadow-lg transition" style={{ borderColor: rustBrown + "40" }}>
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{service.category} - {service.subcategory}</h3>
-              
             </div>
-            <p className="text-sm mt-2">{service.description}</p><br></br>
-            <b><p className="text-sm text-black/60">Availability: {service.availability}</p> {/* Display Availability */}
-            </b><br></br>
-            <p className="text-sm text-black/60">Location: {service.location}</p>
+            <p className="text-sm mt-2">{service.description}</p>
+            <p className="text-sm text-black/60"><b>Availability:</b> {service.availability}</p>
+            <p className="text-sm text-black/60"><b>Location:</b> {service.location}</p>
             <p className="font-semibold text-lg mt-2">₹{service.price}</p>
-            
-            <div className="ml-30 flex gap-3">
-                <button onClick={() => openEditModal(service)} className="bg-gray-600 text-white px-3 py-1 rounded">Edit</button>
-                <button onClick={async () => {
-                  if (!window.confirm("Delete service?")) return;
-                  await deleteService(service.id);
-                  setServices(services.filter(s => s.id !== service.id));
-                }} className="bg-[#B7410E] text-white px-3 py-1 rounded">Delete</button>
-              </div>
+
+            <div className="flex gap-3 mt-2">
+              <button onClick={() => openEditModal(service)} className="bg-gray-600 text-white px-3 py-1 rounded">Edit</button>
+              <button onClick={async () => {
+                if (!window.confirm("Delete service?")) return;
+                await deleteService(service.id);
+                setServices(services.filter(s => s.id !== service.id));
+              }} className="bg-[#B7410E] text-white px-3 py-1 rounded">Delete</button>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-lg relative">
@@ -285,7 +289,7 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
             <input
               type="number"
               value={newService.price}
-              onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) })}
+              onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) || 0 })}
               placeholder="Price"
               className="w-full px-4 py-2 mb-3 border rounded-md"
             />
@@ -325,26 +329,43 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
   );
 }
 
-
 // Service Performance
+// ServicePerformance.jsx
 function ServicePerformance({ services, bookings }) {
+  if (!services || services.length === 0) return null;
+
   return (
     <div className="mt-6">
       <h2 className="text-xl font-bold mb-4">Service Performance</h2>
       <div className="flex flex-col gap-3">
         {services.map(service => {
-          const completedBookings = bookings.filter(b => b.serviceId === service.id && b.status?.toLowerCase() === "completed").length;
-          const totalBookings = bookings.filter(b => b.serviceId === service.id).length;
+          const completedBookings = bookings.filter(
+            b => b.service?.id === service.id && b.status?.toLowerCase() === "completed"
+          ).length;
+          const totalBookings = bookings.filter(
+            b => b.service?.id === service.id
+          ).length;
           const progress = totalBookings ? (completedBookings / totalBookings) * 100 : 0;
 
+          // Determine progress bar color
+          const progressColor =
+            progress === 100
+              ? "#16a34a" // green
+              : progress >= 50
+              ? "#facc15" // yellow
+              : "#dc2626"; // red
+
           return (
-            <div key={service.id} className="bg-white p-3 rounded shadow flex flex-col gap-1">
-              <div className="flex justify-between">
-                <span>{service.category} - {service.subcategory}</span>
-                <span>{completedBookings}/{totalBookings} completed</span>
+            <div key={service.id} className="bg-white p-4 rounded-xl shadow flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-800">{service.category} - {service.subcategory}</span>
+                <span className="text-sm text-gray-600">{completedBookings}/{totalBookings} completed</span>
               </div>
-              <div className="bg-gray-200 h-2 rounded-full">
-                <div className="bg-green-600 h-2 rounded-full" style={{ width: `${progress}%` }} />
+              <div className="bg-gray-200 h-2 rounded-full mt-1">
+                <div
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%`, backgroundColor: progressColor }}
+                />
               </div>
             </div>
           );
@@ -353,6 +374,7 @@ function ServicePerformance({ services, bookings }) {
     </div>
   );
 }
+
 
 // Recent Activity
 function RecentActivity({ bookings }) {
@@ -364,7 +386,9 @@ function RecentActivity({ bookings }) {
       <div className="flex flex-col gap-2">
         {bookings.slice(0, 5).map(b => (
           <div key={b.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
-            <span>{b.customerName || b.user} booked {b.service}</span>
+            <span>{b.customer?.name  || "Unknown"}</span>
+<p>{b.service?.category} - {b.service?.subcategory}</p>
+
             <span className="text-sm text-gray-500">{b.status}</span>
           </div>
         ))}
@@ -374,31 +398,51 @@ function RecentActivity({ bookings }) {
 }
 
 // Bookings Card
-function BookingsCard({ bookings }) {
+function BookingsCard({ bookings, setBookings }) {
+
   const getStatusBadge = (status) => {
     switch (status?.toLowerCase()) {
       case "completed":
         return (
-          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full font-semibold">
             <AiOutlineCheckCircle /> {status}
           </span>
         );
       case "pending":
         return (
-          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full">
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full font-semibold">
             <FiClock /> {status}
           </span>
         );
       case "cancelled":
         return (
-          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full">
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full font-semibold">
             <FiXCircle /> {status}
           </span>
         );
       default:
-        return <span>{status}</span>;
+        return <span className="px-2 py-1 bg-gray-100 rounded-full">{status}</span>;
     }
   };
+
+  const handleStatusUpdate = async (bookingId, newStatus) => {
+    try {
+      // Call backend endpoint
+      await updateBookingStatus(bookingId, newStatus);
+
+      // Update UI state immediately
+      setBookings(bookings.map(b =>
+        b.id === bookingId ? { ...b, status: newStatus } : b
+      ));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update booking status.");
+    }
+  };
+
+  if (!bookings || bookings.length === 0) {
+    return <p className="text-black/70 mt-4">No bookings available.</p>;
+  }
 
   return (
     <div className="mt-6">
@@ -406,22 +450,56 @@ function BookingsCard({ bookings }) {
         <BiClipboard /> My Bookings
       </h2>
 
-      {(!bookings || bookings.length === 0) ? (
-        <p className="text-black/70">No bookings available.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {bookings.map((b) => (
-            <div key={b.id} className="bg-white border rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-2" style={{ borderColor: rustBrown + "40" }}>
-              <div className="flex items-center gap-3">
-                <BiClipboard className="text-2xl" style={{ color: rustBrown }} />
-                <h3 className="font-semibold text-lg">{b.customerName || b.user}</h3>
-              </div>
-              <p className="text-sm text-black/70">{b.service}</p>
-              <div className="mt-2">{getStatusBadge(b.status)}</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {bookings.map((b) => (
+          <div
+            key={b.id}
+            className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
+            style={{
+              borderColor:
+                b.status?.toLowerCase() === "pending"
+                  ? "#facc15"
+                  : b.status?.toLowerCase() === "completed"
+                  ? "#16a34a"
+                  : "#dc2626",
+            }}
+          >
+            <div className="flex col items-center gap-3">
+              <FiUser/>
+              <h3 className="font-semibold text-lg">
+                
+                {b.customer?.name || b.customer?.username || "Unknown"}
+              </h3>
+              {getStatusBadge(b.status)}
             </div>
-          ))}
-        </div>
-      )}
+
+            <p className="text-sm text-gray-700">
+              <span className="font-semibold">{b.service?.category}</span> - {b.service?.subcategory}
+            </p>
+            <p className="text-sm text-gray-600">{b.service?.description}</p>
+            <p className="text-sm text-gray-600">
+              <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
+            </p>
+
+            {b.status?.toLowerCase() === "pending" && (
+              <div className="flex gap-2 mt-2">
+                <button
+                  className="flex-1 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
+                  onClick={() => handleStatusUpdate(b.id, "COMPLETED")}
+                >
+                  Accept
+                </button>
+                <button
+                  className="flex-1 bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
+                  onClick={() => handleStatusUpdate(b.id, "CANCELLED")}
+                >
+                  Decline
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
