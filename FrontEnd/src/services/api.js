@@ -63,6 +63,9 @@ export const getBookingsByProvider = (providerId) =>
   API.get(`/bookings/provider/${providerId}`);
 export const updateBookingStatus = (bookingId, status) =>
   API.put(`/bookings/updateStatus/${bookingId}?status=${status}`);
+// ADMIN: Get all bookings
+export const getAllBookings = () => API.get("/bookings/all");
+
 
 
 // REVIEW APIs

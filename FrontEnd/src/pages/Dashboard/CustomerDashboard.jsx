@@ -344,8 +344,11 @@ function ServicesTab({
   setLocationSearch,
   setSelectedService,
   setIsBookingModalOpen,
+  customer, // customer object for distance calculation
 }) {
   const [mapCenter, setMapCenter] = useState(null);
+  const [sortOption, setSortOption] = useState("distance");
+  const [searchRadius, setSearchRadius] = useState(5); // default 5 km radius
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -353,6 +356,59 @@ function ServicesTab({
       mapRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [mapCenter]);
+
+  // --- Haversine formula for distance
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // --- Filter services by category, location, and within radius
+  const filteredSortedServices = services
+    .filter((s) => {
+      const matchesCategory = s.category?.toLowerCase().includes(categorySearch.toLowerCase());
+      const matchesLocation = s.location?.toLowerCase().includes(locationSearch.toLowerCase());
+      let withinRadius = true;
+
+      if (
+        customer?.latitude &&
+        customer?.longitude &&
+        s.latitude &&
+        s.longitude &&
+        searchRadius
+      ) {
+        const distance = getDistance(
+          customer.latitude,
+          customer.longitude,
+          s.latitude,
+          s.longitude
+        );
+        withinRadius = distance <= searchRadius;
+      }
+
+      return matchesCategory && matchesLocation && withinRadius;
+    })
+    .map((s) => ({
+      ...s,
+      distance:
+        customer?.latitude && s.latitude && s.longitude
+          ? getDistance(customer.latitude, customer.longitude, s.latitude, s.longitude).toFixed(1)
+          : null,
+    }))
+    .sort((a, b) => {
+      if (sortOption === "rating") return (b.rating || 0) - (a.rating || 0);
+      if (sortOption === "distance") return (a.distance || 0) - (b.distance || 0);
+      if (sortOption === "price") return a.price - b.price;
+      return 0;
+    })
 
   return (
     <div className="p-8 bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen">
@@ -365,8 +421,8 @@ function ServicesTab({
         </p>
       </div>
 
-      {/* Search Fields */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-10 max-w-4xl mx-auto">
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 max-w-4xl mx-auto">
         <SearchInput
           icon={<FiSearch />}
           placeholder="Search by category..."
@@ -379,12 +435,14 @@ function ServicesTab({
           value={locationSearch}
           onChange={setLocationSearch}
         />
+        
+        
       </div>
 
       {/* Map */}
       <div className="mb-10 max-w-6xl mx-auto" ref={mapRef}>
         <MapView
-          services={services}
+          services={filteredSortedServices}
           hoveredServiceId={hoveredServiceId}
           center={mapCenter}
         />
@@ -392,7 +450,7 @@ function ServicesTab({
 
       {/* Service Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-        {services.map((service) => (
+        {filteredSortedServices.map((service) => (
           <ServiceCard
             key={service.id}
             service={service}
@@ -406,6 +464,7 @@ function ServicesTab({
     </div>
   );
 }
+
 
 function ServiceCard({ service, setMapCenter, setHoveredServiceId, setSelectedService, setIsBookingModalOpen }) {
   const isNotAvailable = service.availability?.toLowerCase() === "not available";
@@ -487,15 +546,18 @@ function BookingsTab({ bookings }) {
     );
   }
 
+  // ✅ Define clean color mapping for statuses
   const statusColors = {
-    confirmed: "bg-green-100 text-green-800",
-    pending: "bg-yellow-100 text-yellow-800",
-    cancelled: "bg-red-100 text-red-800",
+    completed: "bg-green-100 text-green-800 border border-green-300",
+    confirmed: "bg-green-100 text-green-800 border border-green-300",
+    pending: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+    cancelled: "bg-red-100 text-red-800 border border-red-300",
   };
 
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6 text-blue-700">My Bookings</h2>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {bookings.map((b) => {
           const bookingDate = new Date(b.bookingDate);
@@ -503,45 +565,60 @@ function BookingsTab({ bookings }) {
           const isPast = bookingDate < today;
           const cardBg = isPast ? "bg-gray-50" : "bg-white";
 
+          // Normalize status (lowercase for safety)
+          const status = b.status?.toLowerCase();
+
+          // Border color based on status
+          const borderColor =
+            status === "completed" || status === "confirmed"
+              ? "border-green-400"
+              : status === "pending"
+              ? "border-yellow-400"
+              : "border-red-400";
+
           return (
             <div
               key={b.id}
-              className={`${cardBg} rounded-2xl shadow-lg p-5 hover:shadow-2xl transition flex flex-col justify-between border-t-4 ${
-                b.status === "confirmed"
-                  ? "border-green-400"
-                  : b.status === "pending"
-                  ? "border-yellow-400"
-                  : "border-red-400"
-              }`}
+              className={`${cardBg} rounded-2xl shadow-lg p-5 hover:shadow-2xl transition flex flex-col justify-between border-t-4 ${borderColor}`}
             >
+              {/* Booking details */}
               <div className="mb-4">
                 <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
                   {b.service?.subcategory || "Service Name"}
                 </h3>
+
                 <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                  <FiUser className="text-blue-600" /> Provider: {b.provider?.name || "Unknown"}
+                  <FiUser className="text-blue-600" /> Provider:{" "}
+                  {b.provider?.name || "Unknown"}
                 </p>
-                
+
                 <p className="text-sm text-gray-600 mb-1 flex items-start gap-1">
+                  
                   {b.service?.location || "Location N/A"}
                 </p>
+
                 <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
                   <FiCalendar className="text-green-600" /> {b.bookingDate}
                 </p>
+
                 <p className="text-sm text-gray-600 flex items-center gap-1">
                   <FiClock className="text-purple-600" /> {b.timeSlot}
                 </p>
               </div>
 
+              {/* Footer section */}
               <div className="flex justify-between items-center mt-3">
                 <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    statusColors[b.status] || "bg-gray-100 text-gray-800"
+                  className={`px-3 py-1 rounded-full text-sm font-semibold shadow-sm ${
+                    statusColors[status] || "bg-gray-100 text-gray-800 border"
                   }`}
                 >
-                  {b.status.toUpperCase()}
+                  {b.status?.toUpperCase()}
                 </span>
-                <span className="text-blue-600 font-semibold text-lg">₹{b.service?.price}</span>
+
+                <span className="text-blue-600 font-semibold text-lg">
+                  ₹{b.service?.price}
+                </span>
               </div>
             </div>
           );
@@ -550,6 +627,7 @@ function BookingsTab({ bookings }) {
     </div>
   );
 }
+
 
 
 
