@@ -10,14 +10,19 @@ import {
   FiUser,
   FiMapPin,
   FiCalendar, FiClock,
+  
 } from "react-icons/fi";
 import { MdMiscellaneousServices } from "react-icons/md";
 import { BiHistory } from "react-icons/bi";
+import { AiOutlineCheckCircle } from "react-icons/ai";
 import {
   getAllServices,
   getMyProfile,
   getBookingsByCustomer,
   createBooking,
+  addReview, 
+  getReviewsByProvider, 
+  getProviderAverageRating 
 } from "../../services/api";
 import MapView from "../../components/MapView";
 import { FaSitemap } from "react-icons/fa";
@@ -63,6 +68,13 @@ export default function CustomerDashboard() {
   const [locationSearch, setLocationSearch] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  // For review modal
+const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+const [reviewService, setReviewService] = useState(null);
+const [reviews, setReviews] = useState([]);
+const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
+const [averageRating, setAverageRating] = useState(0);
+
   const [editProfileData, setEditProfileData] = useState({
     name: "",
     email: "",
@@ -72,6 +84,46 @@ export default function CustomerDashboard() {
   // --- Booking modal states
   const [selectedService, setSelectedService] = useState(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+
+  const fetchReviews = async (providerId) => {
+  try {
+    const res = await getReviewsByProvider(providerId);
+    setReviews(res.data);
+
+    const avgRes = await getProviderAverageRating(providerId);
+    setAverageRating(avgRes.data || 0);
+  } catch (err) {
+    console.error("Failed to fetch reviews:", err);
+  }
+};
+
+const openReviewModal = (service) => {
+  setReviewService(service);
+  fetchReviews(service.providerId || service.id);
+  setIsReviewModalOpen(true);
+};
+
+const handleSubmitReview = async () => {
+  if (!newReview.comment) return alert("Please write a comment.");
+  
+  try {
+    await addReview({
+      customer: { id: customer.id },
+      provider: { id: reviewService.providerId || reviewService.id },
+      service: { id: reviewService.id },
+      rating: newReview.rating,
+      comment: newReview.comment,
+    });
+
+    alert("Review submitted!");
+    setNewReview({ rating: 5, comment: "" });
+    fetchReviews(reviewService.providerId || reviewService.id); // refresh
+  } catch (err) {
+    console.error(err);
+    alert("Failed to submit review.");
+  }
+};
+
 
   // --- 🚀 Fetch all data quickly and lazy-load geocodes
   useEffect(() => {
@@ -88,6 +140,18 @@ export default function CustomerDashboard() {
           email: user.email || "",
           location: user.location || "",
         });
+
+        if (user.location) {
+  const userCoords = await geocodeLocation(user.location);
+   
+  if (userCoords) {
+    setCustomer((prev) => ({
+      ...prev,
+      latitude: userCoords.latitude,
+      longitude: userCoords.longitude,
+    }));
+  }
+}
 
         setServices(servicesRes.data);
 
@@ -162,7 +226,7 @@ export default function CustomerDashboard() {
     return 0;
   });
 
-  const getDistance = (lat1, lon1, lat2, lon2) => {
+  function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -173,7 +237,8 @@ export default function CustomerDashboard() {
       Math.sin(dLon / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
-};
+}
+
 
 
   return (
@@ -217,12 +282,17 @@ export default function CustomerDashboard() {
           {/* HOME TAB */}
           {activeTab === "home" && customer && (
   <div className="space-y-6">
-    <h1 className="text-3xl font-bold mb-4">Welcome, {customer.name} 👋</h1>
+    <h1 className="text-3xl font-bold mb-4">Welcome, {customer.name} 👋 </h1>
 
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <MetricCard title="Total Bookings" value={bookings.length} icon={<FiClipboard style={{ color: rustBrown }} />} />
       <MetricCard title="Available Services" value={services.length} icon={<MdMiscellaneousServices style={{ color: rustBrown }} />} />
-      <MetricCard title="Avg. Rating" value={"4.6"} icon={<FiStar style={{ color: rustBrown }} />} />
+      <MetricCard
+  title="Completed Bookings"
+  value={bookings.filter(b => b.status?.toLowerCase() === "completed").length}
+  icon={<AiOutlineCheckCircle style={{ color: rustBrown }} />}
+/>
+
     </div>
 
     {/* Sorting options */}
@@ -250,6 +320,7 @@ export default function CustomerDashboard() {
               {s.distance && <p className="text-xs text-gray-500">{s.distance} km away</p>}
             </div>
             <span className="text-yellow-500 font-semibold">★ {s.rating}</span>
+           
           </div>
         ))}
       </div>
@@ -286,6 +357,7 @@ export default function CustomerDashboard() {
               setLocationSearch={setLocationSearch}
               setSelectedService={setSelectedService}
               setIsBookingModalOpen={setIsBookingModalOpen}
+              openReviewModal={openReviewModal}
             />
           )}
 
@@ -318,6 +390,19 @@ export default function CustomerDashboard() {
           }}
         />
       )}
+
+      {isReviewModalOpen && (
+  <ReviewModal
+    service={reviewService}
+    reviews={reviews}
+    averageRating={averageRating}
+    onClose={() => setIsReviewModalOpen(false)}
+    newReview={newReview}
+    setNewReview={setNewReview}
+    onSubmit={handleSubmitReview}
+  />
+)}
+
     </div>
   );
 }
@@ -345,6 +430,7 @@ function ServicesTab({
   setSelectedService,
   setIsBookingModalOpen,
   customer, // customer object for distance calculation
+  openReviewModal, 
 }) {
   const [mapCenter, setMapCenter] = useState(null);
   const [sortOption, setSortOption] = useState("distance");
@@ -358,18 +444,18 @@ function ServicesTab({
   }, [mapCenter]);
 
   // --- Haversine formula for distance
-  const getDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
+  function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
   // --- Filter services by category, location, and within radius
   const filteredSortedServices = services
@@ -458,6 +544,7 @@ function ServicesTab({
             setHoveredServiceId={setHoveredServiceId}
             setSelectedService={setSelectedService}
             setIsBookingModalOpen={setIsBookingModalOpen}
+            openReviewModal={openReviewModal}
           />
         ))}
       </div>
@@ -466,7 +553,9 @@ function ServicesTab({
 }
 
 
-function ServiceCard({ service, setMapCenter, setHoveredServiceId, setSelectedService, setIsBookingModalOpen }) {
+
+function ServiceCard({ service, setMapCenter, setHoveredServiceId }) {
+  const navigate = useNavigate();
   const isNotAvailable = service.availability?.toLowerCase() === "not available";
 
   const handleViewLocation = () => {
@@ -476,6 +565,11 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId, setSelectedSe
     } else {
       alert("Location not available for this service.");
     }
+  };
+
+  const handleViewDetails = () => {
+    // Navigate to provider detail page
+    navigate(`/provider/${service.providerId || service.id}`);
   };
 
   return (
@@ -498,13 +592,17 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId, setSelectedSe
       </div>
 
       <div className="flex items-center gap-2 mb-3">
-        <span className={`w-3 h-3 rounded-full ${isNotAvailable ? "bg-gray-400" : "bg-green-500 animate-pulse"}`} />
+        <span
+          className={`w-3 h-3 rounded-full ${
+            isNotAvailable ? "bg-gray-400" : "bg-green-500 animate-pulse"
+          }`}
+        />
         <span className="text-xs font-medium">{isNotAvailable ? "Not Available" : service.availability}</span>
       </div>
 
       <button
         onClick={handleViewLocation}
-        className="w-full mb-4 text-sm font-semibold text-blue-600 hover:underline flex items-center justify-center gap-1"
+        className="w-full mb-2 text-sm font-semibold text-blue-600 hover:underline flex items-center justify-center gap-1"
       >
         <FiMapPin /> View Location
       </button>
@@ -514,26 +612,15 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId, setSelectedSe
       <div className="flex justify-between items-center mt-auto">
         <span className="font-bold text-blue-600 text-lg">₹{service.price}</span>
         <button
-          onClick={() => {
-            if (!isNotAvailable) {
-              setSelectedService(service);
-              setIsBookingModalOpen(true);
-            }
-          }}
-          className={`px-6 py-2.5 rounded-full font-semibold text-white shadow-md transition-all ${
-            isNotAvailable
-              ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-              : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-indigo-700 hover:to-blue-700"
-          }`}
-          disabled={isNotAvailable}
+          onClick={handleViewDetails}
+          className="px-6 py-2 rounded-full font-semibold text-white shadow-md transition-all bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-indigo-700 hover:to-blue-700"
         >
-          {isNotAvailable ? "Unavailable" : "Book Now"}
+          View Details
         </button>
       </div>
     </div>
   );
 }
-
 
 
 function BookingsTab({ bookings }) {
@@ -641,6 +728,7 @@ function ProfileTab({
   handleCancelProfile,
 }) {
   return (
+    
     <div className="bg-white p-6 rounded-xl border shadow w-full max-w-md relative">
       <h2 className="text-xl font-semibold mb-4" style={{ color: rustBrown }}>My Profile</h2>
       <div className="flex flex-col gap-2">
@@ -677,6 +765,7 @@ function ProfileTab({
             <p><strong>Name:</strong> {customer.name}</p>
             <p><strong>Email:</strong> {customer.email}</p>
             <p><strong>Location:</strong> {customer.location}</p>
+            
             <button onClick={() => setIsEditingProfile(true)} className="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Edit Profile</button>
           </>
         )}
@@ -824,4 +913,67 @@ function BookingFormModal({ service, customer, onClose }) {
     </div>
   );
 }
+
+function ReviewModal({ service, reviews, averageRating, onClose, newReview, setNewReview, onSubmit }) {
+  if (!service) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+        >
+          ✖
+        </button>
+
+        <h2 className="text-xl font-semibold mb-2">{service.subcategory} - Reviews</h2>
+        <p className="text-sm text-gray-600 mb-4">Average Rating: {averageRating.toFixed(1)} ⭐</p>
+
+        <div className="max-h-64 overflow-y-auto mb-4 space-y-2">
+          {reviews.length === 0 ? (
+            <p className="text-gray-500 text-sm">No reviews yet.</p>
+          ) : (
+            reviews.map((r) => (
+              <div key={r.id} className="border-b py-2">
+                <p className="font-semibold text-gray-800">Rating: {r.rating} ⭐</p>
+                <p className="text-gray-700">{r.comment}</p>
+                <p className="text-xs text-gray-400">By: {r.customer?.name || "Anonymous"}</p>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="border-t pt-3">
+          <h3 className="font-semibold mb-1">Add Your Review</h3>
+          <div className="flex items-center mb-2 gap-2">
+            <label>Rating:</label>
+            <select
+              value={newReview.rating}
+              onChange={(e) => setNewReview({ ...newReview, rating: parseInt(e.target.value) })}
+              className="border px-2 py-1 rounded"
+            >
+              {[5, 4, 3, 2, 1].map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+          <textarea
+            value={newReview.comment}
+            onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+            className="border w-full px-3 py-2 rounded mb-2"
+            placeholder="Write your review..."
+          />
+          <button
+            onClick={onSubmit}
+            className="w-full py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700"
+          >
+            Submit Review
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 

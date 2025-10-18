@@ -1,14 +1,23 @@
+// src/context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
+import axios from "axios";
 import { login as apiLogin, register as apiRegister, getMyProfile } from "../services/api";
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);       // user object {id, name, role, email}
   const [token, setToken] = useState(localStorage.getItem("token") || null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Load user on mount if token exists
+  // Set axios default Authorization header whenever token changes
+  useEffect(() => {
+    if (token) axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    else delete axios.defaults.headers.common["Authorization"];
+  }, [token]);
+
+  // Load user profile on mount if token exists
   useEffect(() => {
     const loadUser = async () => {
       if (token) {
@@ -27,21 +36,22 @@ export const AuthProvider = ({ children }) => {
 
   // 🔑 Login
   const handleLogin = async (credentials) => {
-  try {
-    const res = await apiLogin(credentials);
-    localStorage.setItem("token", res.data.token);
-    setToken(res.data.token);
+    try {
+      const res = await apiLogin(credentials);
+      localStorage.setItem("token", res.data.token);
+      setToken(res.data.token);
 
-    // Fetch full user profile after login
-    const profileRes = await getMyProfile();
-    setUser(profileRes.data);
+      // Fetch full user profile
+      const profileRes = await getMyProfile();
+      setUser(profileRes.data);
 
-    return true;
-  } catch (err) {
-    console.error("Login failed:", err);
-    return false;
-  }
-};
+      return true;
+    } catch (err) {
+      console.error("Login failed:", err);
+      setError(err.response?.data?.message || "Login failed");
+      return false;
+    }
+  };
 
   // 📝 Register
   const handleRegister = async (userData) => {
@@ -50,6 +60,7 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (err) {
       console.error("Registration failed:", err);
+      setError(err.response?.data?.message || "Registration failed");
       return false;
     }
   };
@@ -67,6 +78,7 @@ export const AuthProvider = ({ children }) => {
         user,
         token,
         loading,
+        error,
         isAuthenticated: !!user,
         login: handleLogin,
         logout: handleLogout,
@@ -78,4 +90,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// Custom hook for easy access
 export const useAuth = () => useContext(AuthContext);

@@ -13,6 +13,7 @@ import {
   deleteService,
   createService,
   getBookingsByProvider,
+  updateUser,
   updateBookingStatus
 } from "../../services/api";
 
@@ -25,17 +26,25 @@ export default function ProviderDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("home");
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [error, setError] = useState(false);
+  
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
+   const [editProfileData, setEditProfileData] = useState({
+      name: "",
+      email: "",
+      location: "",
+    });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const { data: providerData } = await getMyProfile();
         setProvider(providerData);
+        setEditProfileData({ ...providerData }); // initialize all fields
 
         const servicesRes = await getServicesByProvider(providerData.id);
         setServices(servicesRes.data || []);
@@ -57,10 +66,31 @@ export default function ProviderDashboard() {
     navigate("/login");
   };
 
+   const handleSaveProfile = async () => {
+  try {
+    const res = await updateUser(provider.id, editProfileData); // provider.id must match logged-in user
+    setProvider(res.data);
+    setIsEditingProfile(false);
+    alert("Profile updated successfully!");
+  } catch (err) {
+    console.error("Failed to update profile:", err);
+    alert("Failed to update profile: " + err.response?.data?.message || err.message);
+  }
+};
+
+
+   const handleCancelProfile = () => {
+    setEditProfileData({ ...customer });
+    setIsEditingProfile(false);
+  };
+
+
   const sidebarItems = [
     { name: "Home", icon: <FiHome className="text-white" />, key: "home" },
     { name: "My Services", icon: <GiHammerNails className="text-white" />, key: "services" },
     { name: "Bookings", icon: <BiClipboard className="text-white" />, key: "bookings" },
+    { name: "Profile", icon: <FiUser className="text-white" />, key: "profile" }, // new
+
   ];
 
   if (loading) return <div className="text-center p-6">Loading...</div>;
@@ -131,6 +161,20 @@ export default function ProviderDashboard() {
         {activeTab === "bookings" && (
           <BookingsCard bookings={bookings} setBookings={setBookings} />
         )}
+
+        {activeTab === "profile" && (
+  <ProfileTab
+  provider={provider}
+  setProvider={setProvider}
+  isEditingProfile={isEditingProfile}
+  setIsEditingProfile={setIsEditingProfile}
+  editProfileData={editProfileData}
+  setEditProfileData={setEditProfileData}
+  handleSaveProfile={handleSaveProfile}
+  handleCancelProfile={handleCancelProfile}
+/>
+)}
+
       </main>
     </div>
   );
@@ -499,6 +543,105 @@ function BookingsCard({ bookings, setBookings }) {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ProfileTab({
+  provider,
+  isEditingProfile,
+  setIsEditingProfile,
+  editProfileData,
+  setEditProfileData,
+  setProvider,
+}) {
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      // Send all existing fields + edited fields
+      const updatedProfile = { ...provider, ...editProfileData };
+      const res = await updateUser(provider.id, updatedProfile);
+      setProvider(res.data); // update parent state
+      setEditProfileData({ ...res.data }); // reset edit form
+      setIsEditingProfile(false);
+      alert("Profile updated successfully!");
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      setErrorMsg(err.response?.data?.message || "Failed to save profile. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelProfile = () => {
+    setEditProfileData({ ...provider }); // revert to full provider data
+    setIsEditingProfile(false);
+    setErrorMsg("");
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-xl border shadow w-full max-w-md relative">
+      <h2 className="text-xl font-semibold mb-4" style={{ color: rustBrown }}>My Profile</h2>
+      {errorMsg && <p className="text-red-600 mb-2">{errorMsg}</p>}
+      <div className="flex flex-col gap-2">
+        {isEditingProfile ? (
+          <>
+            <input
+              type="text"
+              value={editProfileData.name || ""}
+              onChange={(e) => setEditProfileData({ ...editProfileData, name: e.target.value })}
+              className="border px-3 py-2 rounded"
+              placeholder="Name"
+            />
+            <input
+              type="email"
+              value={editProfileData.email || ""}
+              onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
+              className="border px-3 py-2 rounded"
+              placeholder="Email"
+            />
+            <input
+              type="text"
+              value={editProfileData.location || ""}
+              onChange={(e) => setEditProfileData({ ...editProfileData, location: e.target.value })}
+              className="border px-3 py-2 rounded"
+              placeholder="Location"
+            />
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={handleSaveProfile}
+                className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={loading}
+              >
+                {loading ? "Saving..." : "Save"}
+              </button>
+              <button
+                onClick={handleCancelProfile}
+                className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p><strong>Name:</strong> {provider.name}</p>
+            <p><strong>Email:</strong> {provider.email}</p>
+            <p><strong>Location:</strong> {provider.location || "N/A"}</p>
+            <button
+              onClick={() => setIsEditingProfile(true)}
+              className="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Edit Profile
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

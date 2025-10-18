@@ -121,7 +121,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <MetricCard title="Total Users" value={users.length} icon={<FiUsers style={{ color: rustBrown }} />} />
               <MetricCard title="Total Bookings" value={bookings.length} icon={<BiClipboard style={{ color: rustBrown }} />} />
-              <MetricCard title="Verified Providers" value={users.filter(u => u.role.toLowerCase() === "provider").length} icon={<FaUserCheck style={{ color: rustBrown }} />} />
+              <MetricCard title="Verified Providers" value={users.filter(u => (u.role || "").toLowerCase() === "provider").length} icon={<FaUserCheck style={{ color: rustBrown }} />} />
               <MetricCard title="Pending Approvals" value={3} icon={<MdAdminPanelSettings style={{ color: rustBrown }} />} />
             </div>
 
@@ -169,9 +169,9 @@ function UsersCardHome({ users, loading }) {
               <p className="text-sm text-black/70">{u.email}</p>
             </div>
             <div className="flex items-center gap-2">
-              {u.role.toLowerCase() === "admin" && <MdAdminPanelSettings className="w-5 h-5" style={{ color: rustBrown }} />}
-              {u.role.toLowerCase() === "provider" && <FaUserTie className="w-5 h-5" style={{ color: rustBrown }} />}
-              {u.role.toLowerCase() === "customer" && <FiUsers className="w-5 h-5" style={{ color: rustBrown }} />}
+              {(u.role || "").toLowerCase() === "admin" && <MdAdminPanelSettings className="w-5 h-5" style={{ color: rustBrown }} />}
+              {(u.role || "").toLowerCase() === "provider" && <FaUserTie className="w-5 h-5" style={{ color: rustBrown }} />}
+              {(u.role || "").toLowerCase() === "customer" && <FiUsers className="w-5 h-5" style={{ color: rustBrown }} />}
               <span className="px-3 py-1 text-sm border rounded-full" style={{ borderColor: rustBrown + "40" }}>{u.role}</span>
             </div>
           </div>
@@ -258,9 +258,9 @@ function UserCard({ user, users, setUsers }) {
   const [editData, setEditData] = useState({ ...user });
 
   const roleIcon =
-    user.role.toLowerCase() === "admin" ? (
+    (user.role || "").toLowerCase() === "admin" ? (
       <MdAdminPanelSettings className="w-6 h-6 text-white" />
-    ) : user.role.toLowerCase() === "provider" ? (
+    ) : (user.role || "").toLowerCase() === "provider" ? (
       <FaUserTie className="w-6 h-6 text-white" />
     ) : (
       <FiUsers className="w-6 h-6 text-white" />
@@ -374,10 +374,10 @@ function ServiceCard({ service, services, setServices }) {
   const [editData, setEditData] = useState({ ...service });
 
   const icon =
-    service.category.toLowerCase() === "carpentry" ? <GiHammerNails className="text-white" /> :
-    service.category.toLowerCase() === "electrical" ? <GiElectric className="text-white" /> :
-    service.category.toLowerCase() === "cleaning" ? <GiBroom className="text-white" /> : <GiHammerNails className="text-white" />;
-
+  (service.category || "").toLowerCase() === "carpentry" ? <GiHammerNails className="text-white" /> :
+    (service.category || "").toLowerCase() === "electrical" ? <GiElectric className="text-white" /> :
+    (service.category || "").toLowerCase() === "cleaning" ? <GiBroom className="text-white" /> :
+    <GiHammerNails className="text-white" />;
   const handleSave = async () => {
     try {
       await updateService(service.id, editData);

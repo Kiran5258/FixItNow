@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect } from "react";
 
 export const userContext = createContext();
 
-function Userprovider({ children }) {
+function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,4 +37,4 @@ function Userprovider({ children }) {
 // Optional custom hook
 export const useUser = () => React.useContext(userContext);
 
-export default Userprovider;
+export default UserProvider;
