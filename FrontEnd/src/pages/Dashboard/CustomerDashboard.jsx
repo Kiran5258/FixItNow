@@ -40,34 +40,6 @@ const geocodeLocation = async (location) => {
 
 const rustBrown = "#6e290cff";
 
-const handleBookService = async (service, selectedDate, selectedTimeSlot) => {
-  if (!customer) return;
-
-  if (service.availability?.toLowerCase() === "not available") {
-    alert("This service is not available right now.");
-    return;
-  }
-
-  try {
-    const bookingPayload = {
-      booking_date: selectedDate, // YYYY-MM-DD
-      time_slot: selectedTimeSlot,
-      created_at: new Date().toISOString(),
-      status: "CONFIRMED",
-      customer_id: customer.id,
-      provider_id: service.providerId || service.provider_id,
-      service_id: service.id,
-    };
-
-    const res = await createBooking(bookingPayload);
-
-    setBookings((prev) => [...prev, res.data]);
-    alert("Booking successful!");
-  } catch (err) {
-    console.error("Error booking service:", err);
-    alert("Failed to book service. Try again.");
-  }
-};
 
 
 export default function CustomerDashboard() {
