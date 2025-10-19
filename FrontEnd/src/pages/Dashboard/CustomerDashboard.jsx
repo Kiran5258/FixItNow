@@ -22,7 +22,8 @@ import {
   createBooking,
   addReview, 
   getReviewsByProvider, 
-  getProviderAverageRating 
+  getProviderAverageRating,
+  updateUser 
 } from "../../services/api";
 import MapView from "../../components/MapView";
 import { FaSitemap } from "react-icons/fa";
@@ -158,7 +159,8 @@ const handleSubmitReview = async () => {
         Promise.all(
           servicesRes.data.map(async (s) => {
             const coords = await geocodeLocation(s.location);
-            return { ...s, ...coords };
+            return coords ? { ...s, latitude: coords.latitude, longitude: coords.longitude } : s;
+
           })
         ).then((updated) => {
           setServices(updated);
@@ -182,11 +184,37 @@ const handleSubmitReview = async () => {
     navigate("/login");
   };
 
-  const handleSaveProfile = () => {
-    setCustomer(editProfileData);
+  const handleSaveProfile = async () => {
+  try {
+    // Optionally, geocode the new location
+    let coords = null;
+    if (editProfileData.location) {
+      coords = await geocodeLocation(editProfileData.location);
+    }
+
+    // API call to save profile
+    const res = await updateUser(customer.id, {
+  ...editProfileData,
+  latitude: coords?.latitude,
+  longitude: coords?.longitude,
+  
+});
+
+
+    setCustomer({
+      ...res.data, // updated profile from backend
+      latitude: coords?.latitude,
+      longitude: coords?.longitude,
+    });
+
     setIsEditingProfile(false);
-    // TODO: API call to save profile
-  };
+    alert("Profile updated successfully!");
+  } catch (err) {
+    console.error("Failed to update profile:", err.response?.data || err.message);
+    alert("Failed to update profile.");
+  }
+};
+
 
   const handleCancelProfile = () => {
     setEditProfileData({ ...customer });
@@ -227,17 +255,30 @@ const handleSubmitReview = async () => {
   });
 
   function getDistance(lat1, lon1, lat2, lon2) {
+  lat1 = parseFloat(lat1);
+  lon1 = parseFloat(lon1);
+  lat2 = parseFloat(lat2);
+  lon2 = parseFloat(lon2);
+
+  if ([lat1, lon1, lat2, lon2].some(isNaN)) return null;
+
   const R = 6371; // km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
       Math.sin(dLon / 2) ** 2;
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * c; // distance in km as number
 }
+
+
 
 
 
@@ -444,18 +485,30 @@ function ServicesTab({
   }, [mapCenter]);
 
   // --- Haversine formula for distance
-  function getDistance(lat1, lon1, lat2, lon2) {
+ function getDistance(lat1, lon1, lat2, lon2) {
+  lat1 = parseFloat(lat1);
+  lon1 = parseFloat(lon1);
+  lat2 = parseFloat(lat2);
+  lon2 = parseFloat(lon2);
+
+  if ([lat1, lon1, lat2, lon2].some(isNaN)) return null;
+
   const R = 6371; // km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
       Math.sin(dLon / 2) ** 2;
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * c; // distance in km as number
 }
+
 
   // --- Filter services by category, location, and within radius
   const filteredSortedServices = services
