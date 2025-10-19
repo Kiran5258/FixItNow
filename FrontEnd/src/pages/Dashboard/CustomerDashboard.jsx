@@ -30,6 +30,8 @@ import { FaSitemap } from "react-icons/fa";
 
 // --- 🔁 Simple geocode cache to prevent re-fetching same locations
 const geoCache = {};
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
 
 const geocodeLocation = async (location) => {
   if (!location) return null;
@@ -55,6 +57,34 @@ const geocodeLocation = async (location) => {
   return null;
 };
 
+export const getDistance = async (startLat, startLon, endLat, endLon) => {
+  try {
+    const response = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=false`
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch distance from OSRM");
+    }
+
+    const data = await response.json();
+
+    if (data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
+      const distanceKm = (route.distance / 1000).toFixed(2); // meters → km
+      const durationMin = (route.duration / 60).toFixed(1); // seconds → minutes
+      return { distanceKm, durationMin };
+    } else {
+      console.warn("No route found in OSRM response");
+      return { distanceKm: null, durationMin: null };
+    }
+  } catch (error) {
+    console.error("OSRM API error:", error);
+    return { distanceKm: null, durationMin: null };
+  }
+};
+
+
 const rustBrown = "#6e290cff";
 
 export default function CustomerDashboard() {
@@ -63,10 +93,14 @@ export default function CustomerDashboard() {
   const [services, setServices] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [customer, setCustomer] = useState(null);
+  const [servicesWithDistance, setServicesWithDistance] = useState([]);
+
   const [sortOption, setSortOption] = useState("rating");
   const [hoveredServiceId, setHoveredServiceId] = useState(null);
   const [categorySearch, setCategorySearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
+  const [searchRadius, setSearchRadius] = useState(); // or 5 as default
+
   const [selectedProviderId, setSelectedProviderId] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   // For review modal
@@ -127,99 +161,121 @@ const handleSubmitReview = async () => {
 
 
   // --- 🚀 Fetch all data quickly and lazy-load geocodes
-  useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        const profileRes = await getMyProfile();
-        const servicesRes = await getAllServices();
-        const bookingsRes = await getBookingsByCustomer(profileRes.data.id);
+ useEffect(() => {
+  const fetchAllData = async () => {
+    try {
+      // 1️⃣ Fetch profile, services, and bookings concurrently
+      const profileRes = await getMyProfile();
+      const [servicesRes, bookingsRes] = await Promise.all([
+       
+        getAllServices(),
+        getBookingsByCustomer(profileRes?.data?.id || 0), // temporary 0, will fix below
+      ]);
 
-        const user = profileRes.data;
-        setCustomer(user);
-        setEditProfileData({
-          name: user.name || "",
-          email: user.email || "",
-          location: user.location || "",
-        });
+      const user = profileRes.data;
+      setCustomer(user);
+      setEditProfileData({
+        name: user.name || "",
+        email: user.email || "",
+        location: user.location || "",
+      });
 
-        if (user.location) {
-  const userCoords = await geocodeLocation(user.location);
-   
-  if (userCoords) {
-    setCustomer((prev) => ({
-      ...prev,
-      latitude: userCoords.latitude,
-      longitude: userCoords.longitude,
-    }));
-  }
-}
-
-        setServices(servicesRes.data);
-
-        Promise.all(
-          servicesRes.data.map(async (s) => {
-            const coords = await geocodeLocation(s.location);
-            return coords ? { ...s, latitude: coords.latitude, longitude: coords.longitude } : s;
-
-          })
-        ).then((updated) => {
-          setServices(updated);
-        });
-
-        setBookings(bookingsRes.data);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        if (err.response?.status === 401) {
-          localStorage.removeItem("token");
-          navigate("/login");
+      // 2️⃣ Geocode user location if exists
+      let userCoords = null;
+      if (user.location) {
+        userCoords = await geocodeLocation(user.location);
+        if (userCoords) {
+          setCustomer((prev) => ({
+            ...prev,
+            latitude: userCoords.latitude,
+            longitude: userCoords.longitude,
+          }));
         }
       }
-    };
 
-    fetchAllData();
-  }, [navigate]);
+      // 3️⃣ Set services immediately (no distance/ratings yet)
+      const initialServices = servicesRes.data.map((s) => ({
+        ...s,
+        distance: null,
+        averageRating: 0,
+      }));
+      setServices(initialServices);
+      setServicesWithDistance(initialServices);
+
+      // 4️⃣ Set bookings
+      setBookings(bookingsRes.data);
+
+      // 5️⃣ Lazy-load distances + ratings asynchronously
+      const servicesWithExtra = await Promise.all(
+        initialServices.map(async (s) => {
+          let coords = await geocodeLocation(s.location);
+
+          let avgRating = 0;
+          try {
+            const res = await getProviderAverageRating(s.providerId || s.id);
+            avgRating = res.data || 0;
+          } catch (err) {
+            console.error("Failed to fetch rating for:", s.providerName || s.name);
+          }
+
+          let distance = null;
+          if (userCoords && coords) {
+            const distRes = await getDistance(
+              userCoords.latitude,
+              userCoords.longitude,
+              coords.latitude,
+              coords.longitude
+            );
+            distance = distRes.distanceKm ? parseFloat(distRes.distanceKm) : null;
+          }
+
+          return {
+            ...s,
+            latitude: coords?.latitude,
+            longitude: coords?.longitude,
+            averageRating: avgRating,
+            distance,
+          };
+        })
+      );
+
+      setServicesWithDistance(servicesWithExtra);
+
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    }
+  };
+
+  fetchAllData();
+}, [navigate]);
+
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
-
-  const handleSaveProfile = async () => {
+const handleSaveProfile = async (updatedData) => {
   try {
-    // Optionally, geocode the new location
-    let coords = null;
-    if (editProfileData.location) {
-      coords = await geocodeLocation(editProfileData.location);
-    }
-
-    // API call to save profile
-    const res = await updateUser(customer.id, {
-  ...editProfileData,
-  latitude: coords?.latitude,
-  longitude: coords?.longitude,
-  
-});
-
-
-    setCustomer({
-      ...res.data, // updated profile from backend
-      latitude: coords?.latitude,
-      longitude: coords?.longitude,
-    });
-
-    setIsEditingProfile(false);
+    const res = await updateUser(customer.id, updatedData);
+    setCustomer(res.data);
     alert("Profile updated successfully!");
   } catch (err) {
-    console.error("Failed to update profile:", err.response?.data || err.message);
+    console.error(err);
     alert("Failed to update profile.");
   }
 };
 
+const handleCancelProfile = () => {
+  setEditProfileData({ ...customer });
+  setIsEditingProfile(false);
+};
 
-  const handleCancelProfile = () => {
-    setEditProfileData({ ...customer });
-    setIsEditingProfile(false);
-  };
+
+
 
   const sidebarItems = [
     { name: "Home", icon: <FiHome />, key: "home" },
@@ -234,51 +290,23 @@ const handleSubmitReview = async () => {
       s.location?.toLowerCase().includes(locationSearch.toLowerCase())
   );
 
-  const filteredSortedServices = services
-  .filter(
-    (s) =>
-      s.category?.toLowerCase().includes(categorySearch.toLowerCase()) &&
-      s.location?.toLowerCase().includes(locationSearch.toLowerCase())
-  )
-  .map((s) => ({
-    ...s,
-    distance:
-      customer?.latitude && s.latitude && s.longitude
-        ? getDistance(customer.latitude, customer.longitude, s.latitude, s.longitude).toFixed(1)
-        : null,
-  }))
+  const filteredSortedServices = servicesWithDistance
+  .filter((s) => {
+    const matchesCategory = s.category?.toLowerCase().includes(categorySearch.toLowerCase());
+    const matchesLocation = s.location?.toLowerCase().includes(locationSearch.toLowerCase());
+    const withinRadius = !searchRadius || (s.distance && s.distance <= searchRadius);
+    return matchesCategory && matchesLocation && withinRadius;
+  })
   .sort((a, b) => {
     if (sortOption === "rating") return (b.rating || 0) - (a.rating || 0);
     if (sortOption === "distance") return (a.distance || 0) - (b.distance || 0);
-    if (sortOption === "price") return a.price - b.price;
+    
     return 0;
   });
 
-  function getDistance(lat1, lon1, lat2, lon2) {
-  lat1 = parseFloat(lat1);
-  lon1 = parseFloat(lon1);
-  lat2 = parseFloat(lat2);
-  lon2 = parseFloat(lon2);
+  
 
-  if ([lat1, lon1, lat2, lon2].some(isNaN)) return null;
-
-  const R = 6371; // km
-  const toRad = (deg) => (deg * Math.PI) / 180;
-
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // distance in km as number
-}
-
-
+  
 
 
 
@@ -346,7 +374,7 @@ const handleSubmitReview = async () => {
       >
         <option value="rating">Rating</option>
         <option value="distance">Distance</option>
-        <option value="price">Price</option>
+        
       </select>
     </div>
 
@@ -360,7 +388,7 @@ const handleSubmitReview = async () => {
               <p className="text-sm text-gray-600">{s.category}</p>
               {s.distance && <p className="text-xs text-gray-500">{s.distance} km away</p>}
             </div>
-            <span className="text-yellow-500 font-semibold">★ {s.rating}</span>
+            <span className="text-yellow-500 font-semibold">★ {s.averageRating}</span>
            
           </div>
         ))}
@@ -389,7 +417,7 @@ const handleSubmitReview = async () => {
           {/* SERVICES TAB */}
           {activeTab === "services" && (
             <ServicesTab
-              services={filteredServices}
+              servicesWithDistance={servicesWithDistance} 
               hoveredServiceId={hoveredServiceId}
               setHoveredServiceId={setHoveredServiceId}
               categorySearch={categorySearch}
@@ -409,6 +437,7 @@ const handleSubmitReview = async () => {
           {activeTab === "profile" && customer && (
             <ProfileTab
               customer={customer}
+              setCustomer={setCustomer}
               isEditingProfile={isEditingProfile}
               setIsEditingProfile={setIsEditingProfile}
               editProfileData={editProfileData}
@@ -461,7 +490,7 @@ function MetricCard({ title, value, icon }) {
 }
 
 function ServicesTab({
-  services,
+  servicesWithDistance,
   hoveredServiceId,
   setHoveredServiceId,
   categorySearch,
@@ -475,7 +504,7 @@ function ServicesTab({
 }) {
   const [mapCenter, setMapCenter] = useState(null);
   const [sortOption, setSortOption] = useState("distance");
-  const [searchRadius, setSearchRadius] = useState(5); // default 5 km radius
+  const [searchRadius, setSearchRadius] = useState(); // default 5 km radius
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -484,70 +513,35 @@ function ServicesTab({
     }
   }, [mapCenter]);
 
-  // --- Haversine formula for distance
- function getDistance(lat1, lon1, lat2, lon2) {
-  lat1 = parseFloat(lat1);
-  lon1 = parseFloat(lon1);
-  lat2 = parseFloat(lat2);
-  lon2 = parseFloat(lon2);
-
-  if ([lat1, lon1, lat2, lon2].some(isNaN)) return null;
-
-  const R = 6371; // km
-  const toRad = (deg) => (deg * Math.PI) / 180;
-
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // distance in km as number
-}
 
 
   // --- Filter services by category, location, and within radius
-  const filteredSortedServices = services
-    .filter((s) => {
-      const matchesCategory = s.category?.toLowerCase().includes(categorySearch.toLowerCase());
-      const matchesLocation = s.location?.toLowerCase().includes(locationSearch.toLowerCase());
-      let withinRadius = true;
+// --- Filter services by category, location, and radius
+const filteredSortedServices = (servicesWithDistance || [])
+  .filter((s) => {
+    const matchesCategory = categorySearch
+      ? s.category?.toLowerCase().includes(categorySearch.toLowerCase())
+      : true; // show all if no category search
 
-      if (
-        customer?.latitude &&
-        customer?.longitude &&
-        s.latitude &&
-        s.longitude &&
-        searchRadius
-      ) {
-        const distance = getDistance(
-          customer.latitude,
-          customer.longitude,
-          s.latitude,
-          s.longitude
-        );
-        withinRadius = distance <= searchRadius;
-      }
+    const matchesLocation = locationSearch
+      ? s.location?.toLowerCase().includes(locationSearch.toLowerCase())
+      : true; // show all if no location search
 
-      return matchesCategory && matchesLocation && withinRadius;
-    })
-    .map((s) => ({
-      ...s,
-      distance:
-        customer?.latitude && s.latitude && s.longitude
-          ? getDistance(customer.latitude, customer.longitude, s.latitude, s.longitude).toFixed(1)
-          : null,
-    }))
-    .sort((a, b) => {
-      if (sortOption === "rating") return (b.rating || 0) - (a.rating || 0);
-      if (sortOption === "distance") return (a.distance || 0) - (b.distance || 0);
-      if (sortOption === "price") return a.price - b.price;
-      return 0;
-    })
+    const withinRadius =
+      searchRadius && s.distance != null
+        ? s.distance <= searchRadius
+        : true; // if no radius, include all
+
+    return matchesCategory && matchesLocation && withinRadius;
+  })
+  .sort((a, b) => {
+    if (sortOption === "rating") return (b.averageRating || 0) - (a.averageRating || 0);
+    if (sortOption === "distance") return (a.distance || 0) - (b.distance || 0);
+    return 0;
+  });
+
+ 
+
 
   return (
     <div className="p-8 bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen">
@@ -574,6 +568,18 @@ function ServicesTab({
           value={locationSearch}
           onChange={setLocationSearch}
         />
+        <div className="flex items-center gap-2">
+  <label className="text-gray-700 font-medium">Within (km):</label>
+  <input
+    type="number"
+    value={searchRadius || ""}
+    onChange={(e) => setSearchRadius(Number(e.target.value))}
+    className="border px-2 py-1 rounded w-20"
+    min={1}
+    placeholder="e.g., 5"
+  />
+</div>
+
         
         
       </div>
@@ -770,62 +776,132 @@ function BookingsTab({ bookings }) {
 
 
 
-
 function ProfileTab({
   customer,
+  setCustomer,
   isEditingProfile,
   setIsEditingProfile,
   editProfileData,
   setEditProfileData,
-  handleSaveProfile,
-  handleCancelProfile,
 }) {
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      // Merge existing customer data with edited fields
+      const updatedProfile = { ...customer, ...editProfileData };
+      const res = await updateUser(customer.id, updatedProfile);
+
+      // Update parent state and reset edit form
+      setCustomer(res.data);
+      setEditProfileData({ ...res.data });
+      setIsEditingProfile(false);
+
+      alert("Profile updated successfully!");
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      setErrorMsg(
+        err.response?.data?.message || "Failed to save profile. Try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelProfile = () => {
+    // Revert form to original customer data
+    setEditProfileData({ ...customer });
+    setIsEditingProfile(false);
+    setErrorMsg("");
+  };
+
   return (
-    
     <div className="bg-white p-6 rounded-xl border shadow w-full max-w-md relative">
-      <h2 className="text-xl font-semibold mb-4" style={{ color: rustBrown }}>My Profile</h2>
+      <h2 className="text-xl font-semibold mb-4" style={{ color: "#6e290c" }}>
+        My Profile
+      </h2>
+
+      {errorMsg && <p className="text-red-600 mb-2">{errorMsg}</p>}
+
       <div className="flex flex-col gap-2">
         {isEditingProfile ? (
           <>
             <input
               type="text"
-              value={editProfileData.name}
-              onChange={(e) => setEditProfileData({ ...editProfileData, name: e.target.value })}
+              value={editProfileData.name || ""}
+              onChange={(e) =>
+                setEditProfileData({ ...editProfileData, name: e.target.value })
+              }
               className="border px-3 py-2 rounded"
               placeholder="Name"
             />
             <input
               type="email"
-              value={editProfileData.email}
-              onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
+              value={editProfileData.email || ""}
+              onChange={(e) =>
+                setEditProfileData({ ...editProfileData, email: e.target.value })
+              }
               className="border px-3 py-2 rounded"
               placeholder="Email"
             />
             <input
               type="text"
-              value={editProfileData.location}
-              onChange={(e) => setEditProfileData({ ...editProfileData, location: e.target.value })}
+              value={editProfileData.location || ""}
+              onChange={(e) =>
+                setEditProfileData({ ...editProfileData, location: e.target.value })
+              }
               className="border px-3 py-2 rounded"
               placeholder="Location"
             />
+
             <div className="flex gap-2 mt-3">
-              <button onClick={handleSaveProfile} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
-              <button onClick={handleCancelProfile} className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Cancel</button>
+              <button
+                onClick={handleSaveProfile}
+                className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ${
+                  loading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                disabled={loading}
+              >
+                {loading ? "Saving..." : "Save"}
+              </button>
+              <button
+                onClick={handleCancelProfile}
+                className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+                disabled={loading}
+              >
+                Cancel
+              </button>
             </div>
           </>
         ) : (
           <>
-            <p><strong>Name:</strong> {customer.name}</p>
-            <p><strong>Email:</strong> {customer.email}</p>
-            <p><strong>Location:</strong> {customer.location}</p>
-            
-            <button onClick={() => setIsEditingProfile(true)} className="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Edit Profile</button>
+            <p>
+              <strong>Name:</strong> {customer.name}
+            </p>
+            <p>
+              <strong>Email:</strong> {customer.email}
+            </p>
+            <p>
+              <strong>Location:</strong> {customer.location || "N/A"}
+            </p>
+            <button
+              onClick={() => setIsEditingProfile(true)}
+              className="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Edit Profile
+            </button>
           </>
         )}
       </div>
     </div>
   );
 }
+
+
+
 
 function SearchInput({ icon, placeholder, value, onChange }) {
   return (
