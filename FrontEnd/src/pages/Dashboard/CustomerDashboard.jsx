@@ -29,19 +29,39 @@ import MapView from "../../components/MapView";
 import { FaSitemap } from "react-icons/fa";
 
 // --- 🔁 Simple geocode cache to prevent re-fetching same locations
-const geoCache = {};
+const geoCache = JSON.parse(localStorage.getItem("geoCache") || "{}");
+let lastRequestTime = 0;
+
+// Sleep helper
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
+// Function to save cache to localStorage
+const saveCache = () => {
+  localStorage.setItem("geoCache", JSON.stringify(geoCache));
+};
 
 const geocodeLocation = async (location) => {
   if (!location) return null;
-  if (geoCache[location]) return geoCache[location]; // use cached
+
+  // Return cached result if exists
+  if (geoCache[location]) return geoCache[location];
+
+  // Throttle requests: wait until at least 1 second passed since last request
+  const now = Date.now();
+  const elapsed = now - lastRequestTime;
+  if (elapsed < 1100) {
+    await sleep(1100 - elapsed);
+  }
+
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
         location
       )}`
     );
+
+    lastRequestTime = Date.now(); // update last request time
+
     const data = await res.json();
     if (data && data.length > 0) {
       const coords = {
@@ -49,13 +69,18 @@ const geocodeLocation = async (location) => {
         longitude: parseFloat(data[0].lon),
       };
       geoCache[location] = coords;
+      saveCache();
       return coords;
+    } else {
+      console.warn("No results found for:", location);
     }
   } catch (err) {
     console.error("Geocoding error:", err);
   }
+
   return null;
 };
+
 
 export const getDistance = async (startLat, startLon, endLat, endLon) => {
   try {
@@ -164,15 +189,9 @@ const handleSubmitReview = async () => {
  useEffect(() => {
   const fetchAllData = async () => {
     try {
-      // 1️⃣ Fetch profile, services, and bookings concurrently
       const profileRes = await getMyProfile();
-      const [servicesRes, bookingsRes] = await Promise.all([
-       
-        getAllServices(),
-        getBookingsByCustomer(profileRes?.data?.id || 0), // temporary 0, will fix below
-      ]);
-
       const user = profileRes.data;
+
       setCustomer(user);
       setEditProfileData({
         name: user.name || "",
@@ -180,9 +199,22 @@ const handleSubmitReview = async () => {
         location: user.location || "",
       });
 
-      // 2️⃣ Geocode user location if exists
+      const [servicesRes, bookingsRes] = await Promise.all([
+        getAllServices(),
+        getBookingsByCustomer(user.id),
+      ]);
+
+      const initialServices = servicesRes.data.map((s) => ({
+        ...s,
+        distance: null,
+        averageRating: 0,
+      }));
+      setServices(initialServices);
+      setBookings(bookingsRes.data);
+      setServicesWithDistance(initialServices);
+
       let userCoords = null;
-      if (user.location) {
+      if (user.location && user.location.trim() !== "") {
         userCoords = await geocodeLocation(user.location);
         if (userCoords) {
           setCustomer((prev) => ({
@@ -193,53 +225,52 @@ const handleSubmitReview = async () => {
         }
       }
 
-      // 3️⃣ Set services immediately (no distance/ratings yet)
-      const initialServices = servicesRes.data.map((s) => ({
-        ...s,
-        distance: null,
-        averageRating: 0,
-      }));
-      setServices(initialServices);
-      setServicesWithDistance(initialServices);
+      // Compute extra info with throttling
+      const limitedBatch = initialServices.slice(0, 10); // only first 10 at once
 
-      // 4️⃣ Set bookings
-      setBookings(bookingsRes.data);
-
-      // 5️⃣ Lazy-load distances + ratings asynchronously
       const servicesWithExtra = await Promise.all(
-        initialServices.map(async (s) => {
-          let coords = await geocodeLocation(s.location);
+        limitedBatch.map(async (s) => {
+          if (!s.location || s.location.trim() === "") return s;
+
+          let coords = null;
+          try {
+            coords = await geocodeLocation(s.location);
+          } catch (e) {
+            console.warn("Skipping invalid location:", s.location);
+          }
 
           let avgRating = 0;
           try {
             const res = await getProviderAverageRating(s.providerId || s.id);
             avgRating = res.data || 0;
-          } catch (err) {
-            console.error("Failed to fetch rating for:", s.providerName || s.name);
+          } catch {
+            console.warn("Rating fetch failed for", s.id);
           }
 
           let distance = null;
           if (userCoords && coords) {
-            const distRes = await getDistance(
-              userCoords.latitude,
-              userCoords.longitude,
-              coords.latitude,
-              coords.longitude
-            );
-            distance = distRes.distanceKm ? parseFloat(distRes.distanceKm) : null;
+            try {
+              const distRes = await getDistance(
+                userCoords.latitude,
+                userCoords.longitude,
+                coords.latitude,
+                coords.longitude
+              );
+              distance = distRes.distanceKm ? parseFloat(distRes.distanceKm) : null;
+              console.log(
+          `User: [${userCoords.latitude}, ${userCoords.longitude}], Provider (${s.providerName || s.name}): [${coords.latitude}, ${coords.longitude}], Distance: ${distance} km`
+        );
+            } catch (e) {
+              console.warn("Distance fetch failed for", s.id);
+            }
           }
 
-          return {
-            ...s,
-            latitude: coords?.latitude,
-            longitude: coords?.longitude,
-            averageRating: avgRating,
-            distance,
-          };
+          return { ...s, latitude: coords?.latitude, longitude: coords?.longitude, averageRating: avgRating, distance };
         })
       );
+      await sleep(1000);
 
-      setServicesWithDistance(servicesWithExtra);
+      setServicesWithDistance((prev) => [...servicesWithExtra, ...prev.slice(10)]);
 
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -251,7 +282,9 @@ const handleSubmitReview = async () => {
   };
 
   fetchAllData();
-}, [navigate]);
+  
+}, []);
+
 
 
   const handleLogout = () => {
@@ -298,8 +331,9 @@ const handleCancelProfile = () => {
     return matchesCategory && matchesLocation && withinRadius;
   })
   .sort((a, b) => {
-    if (sortOption === "rating") return (b.rating || 0) - (a.rating || 0);
-    if (sortOption === "distance") return (a.distance || 0) - (b.distance || 0);
+    if (sortOption === "rating") return (b.averageRating.toFixed(2) || 0) - (a.averageRating.toFixed(2) || 0);
+
+    if (sortOption === "distance") return (a.distance ) - (b.distance );
     
     return 0;
   });
@@ -388,7 +422,7 @@ const handleCancelProfile = () => {
               <p className="text-sm text-gray-600">{s.category}</p>
               {s.distance && <p className="text-xs text-gray-500">{s.distance} km away</p>}
             </div>
-            <span className="text-yellow-500 font-semibold">★ {s.averageRating}</span>
+            <span className="text-yellow-500 font-semibold">★ {s.averageRating.toFixed(2)}</span>
            
           </div>
         ))}

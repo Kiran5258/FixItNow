@@ -17,6 +17,7 @@ import {
   updateBookingStatus,
   getProviderAverageRating,
   getReviewsByProvider,
+  deleteReview
   
 } from "../../services/api";
 import { Md18UpRating, MdReviews } from "react-icons/md";
@@ -59,6 +60,7 @@ export default function ProviderDashboard() {
         setServices(servicesRes.data || []);
 
         const bookingsRes = await getBookingsByProvider(providerData.id);
+        const bookingsData = bookingsRes.data || [];
         setBookings(bookingsRes.data || []);
         // Calculate Respect
         const ratingRes = await getProviderAverageRating(providerData.id);
@@ -66,19 +68,31 @@ export default function ProviderDashboard() {
       setAverageRating(avgRating);
 
       const reviewsRes = await getReviewsByProvider(providerData.id);
+       const reviewsData = reviewsRes.data || [];
       setReviews(reviewsRes.data || []);
 
       // Calculate Respect Score using average rating from backend
-      const completedBookings = bookingsRes.data.filter(
-        (b) => b.status?.toLowerCase() === "completed"
-      ).length;
-        
-        const score = Math.min(100, completedBookings * 5 + avgRating * 20);
-      setRespectScore(score);
+       const completedBookings = bookingsData.filter(b => b.status?.toLowerCase() === "completed").length;
+      const pendingBookings = bookingsData.filter(b => b.status?.toLowerCase() === "pending").length;
+      const cancelledBookings = bookingsData.filter(b => b.status?.toLowerCase() === "cancelled").length;
 
-        if (score >= 80) setRespectLevel("Star Performer");
-        else if (score >= 50) setRespectLevel("Trusted Provider");
-        else setRespectLevel("Newbie");
+      // Assign points: Completed = 5, Pending = 2, Cancelled = 0
+      const completedPoints = completedBookings * 5;
+      const pendingPoints = pendingBookings * 2;
+      const cancelledPoints = cancelledBookings * 0;
+
+      // Weight the average rating by number of reviews (max effect at 5 reviews)
+      const reviewCount = reviewsData.length;
+      const ratingWeight = Math.min(reviewCount, 5) / 5; // 1 review = 0.2, 5 or more = 1
+      const ratingPoints = avgRating * 20 * ratingWeight; // scale to 0-100
+
+      const totalScore = Math.min(100, completedPoints + pendingPoints + cancelledPoints + ratingPoints);
+      setRespectScore(totalScore);
+
+      // Determine level
+      if (totalScore >= 80) setRespectLevel("Star Performer");
+      else if (totalScore >= 50) setRespectLevel("Trusted Provider");
+      else setRespectLevel("Newbie");
       } catch (err) {
         console.error("Error fetching provider data:", err);
         setError(true);
@@ -713,35 +727,48 @@ function ProfileTab({
     </div>
   );
 }
-function ReviewsTab({ reviews, providerId }) {
+
+function ReviewsTab({ reviews }) {
   const [allReviews, setAllReviews] = useState(reviews || []);
   const [replyText, setReplyText] = useState("");
   const [selectedReview, setSelectedReview] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Function to post a reply (you can create a backend endpoint like POST /reviews/:id/reply)
+  // Function to post a reply
   const handleReply = async () => {
-  if (!replyText || !selectedReview) return;
-  setLoading(true);
-  try {
-    // Call backend API
-    await addReviewReply(selectedReview.id, { reply: replyText });
+    if (!replyText || !selectedReview) return;
+    setLoading(true);
+    try {
+      // Call backend API
+      await addReviewReply(selectedReview.id, { reply: replyText });
 
-    // Update local state to show reply immediately
-    setAllReviews(allReviews.map(r =>
-      r.id === selectedReview.id ? { ...r, reply: replyText } : r
-    ));
+      // Update local state to show reply immediately
+      setAllReviews(allReviews.map(r =>
+        r.id === selectedReview.id ? { ...r, reply: replyText } : r
+      ));
 
-    setReplyText("");
-    setSelectedReview(null);
-  } catch (err) {
-    console.error(err);
-    alert("Failed to reply to review.");
-  } finally {
-    setLoading(false);
-  }
-};
+      setReplyText("");
+      setSelectedReview(null);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to reply to review.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Function to delete review
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Are you sure you want to delete this review?")) return;
+    try {
+      await deleteReview(reviewId); // make sure this API exists in your services/api
+      setAllReviews(allReviews.filter(r => r.id !== reviewId));
+      alert("Review deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete review.");
+    }
+  };
 
   if (!allReviews || allReviews.length === 0) return <p>No reviews yet.</p>;
 
@@ -760,16 +787,20 @@ function ReviewsTab({ reviews, providerId }) {
             <div className="text-sm text-gray-500 flex gap-2 flex-wrap">
               {r.service?.category && <span className="px-2 py-1 bg-gray-200 rounded">{`Category: ${r.service.category}`}</span>}
               {r.service?.subcategory && <span className="px-2 py-1 bg-gray-200 rounded">{`Subcategory: ${r.service.subcategory}`}</span>}
+              
             </div>
 
-            {/* Display provider reply if exists */}
-            {r.reply && (
-              <div className="mt-2 p-2 bg-indigo-50 border-l-4 border-indigo-500 rounded">
-                <strong>Your Reply:</strong> {r.reply}
-              </div>
-            )}
-
             
+
+            {/* Delete Review Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => handleDeleteReview(r.id)}
+                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>

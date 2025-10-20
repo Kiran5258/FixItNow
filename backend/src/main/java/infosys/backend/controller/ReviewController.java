@@ -102,6 +102,16 @@ public ResponseEntity<ReviewResponseDTO> addReply(
     }
 }
 
+@PreAuthorize("hasRole('PROVIDER') or hasRole('ADMIN')")
+    @DeleteMapping("/{reviewId}")
+    public ResponseEntity<Void> deleteReview(@PathVariable Long reviewId) {
+        try {
+            reviewService.deleteReview(reviewId); // implement this in ReviewService
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 
 
 }
