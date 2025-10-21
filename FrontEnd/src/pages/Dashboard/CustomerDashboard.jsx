@@ -225,52 +225,43 @@ const handleSubmitReview = async () => {
         }
       }
 
-      // Compute extra info with throttling
-      const limitedBatch = initialServices.slice(0, 10); // only first 10 at once
+    const servicesWithExtra = await Promise.all(
+  initialServices.map(async (s) => {
+    let serviceCoords = null;
+    if (s.location?.trim()) {
+      serviceCoords = await geocodeLocation(s.location);
+    }
 
-      const servicesWithExtra = await Promise.all(
-        limitedBatch.map(async (s) => {
-          if (!s.location || s.location.trim() === "") return s;
-
-          let coords = null;
-          try {
-            coords = await geocodeLocation(s.location);
-          } catch (e) {
-            console.warn("Skipping invalid location:", s.location);
-          }
-
-          let avgRating = 0;
-          try {
-            const res = await getProviderAverageRating(s.providerId || s.id);
-            avgRating = res.data || 0;
-          } catch {
-            console.warn("Rating fetch failed for", s.id);
-          }
-
-          let distance = null;
-          if (userCoords && coords) {
-            try {
-              const distRes = await getDistance(
-                userCoords.latitude,
-                userCoords.longitude,
-                coords.latitude,
-                coords.longitude
-              );
-              distance = distRes.distanceKm ? parseFloat(distRes.distanceKm) : null;
-              console.log(
-          `User: [${userCoords.latitude}, ${userCoords.longitude}], Provider (${s.providerName || s.name}): [${coords.latitude}, ${coords.longitude}], Distance: ${distance} km`
-        );
-            } catch (e) {
-              console.warn("Distance fetch failed for", s.id);
-            }
-          }
-
-          return { ...s, latitude: coords?.latitude, longitude: coords?.longitude, averageRating: avgRating, distance };
-        })
+    let distance = null;
+    if (userCoords && serviceCoords) {
+      const distRes = await getDistance(
+        userCoords.latitude,
+        userCoords.longitude,
+        serviceCoords.latitude,
+        serviceCoords.longitude
       );
-      await sleep(1000);
+      distance = +distRes.distanceKm; // convert to number
+    }
 
-      setServicesWithDistance((prev) => [...servicesWithExtra, ...prev.slice(10)]);
+    let avgRating = 0;
+    try {
+      const avgRes = await getProviderAverageRating(s.providerId || s.id);
+      avgRating = avgRes.data || 0;
+    } catch (err) {
+      console.error("Error fetching rating for service", s.id, err);
+    }
+
+    return {
+      ...s,
+      distance,
+      averageRating: avgRating,
+      latitude: serviceCoords?.latitude,
+      longitude: serviceCoords?.longitude,
+    };
+  })
+);
+
+      setServicesWithDistance(servicesWithExtra);
 
     } catch (err) {
       console.error("Error fetching data:", err);

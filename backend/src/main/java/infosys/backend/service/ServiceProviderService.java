@@ -8,6 +8,7 @@ import infosys.backend.repository.ServiceRepository;
 import infosys.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -69,6 +70,7 @@ public class ServiceProviderService {
     }
 
     // ✅ Delete service (PROVIDER only)
+    @Transactional
     public void deleteService(Long id) {
         if (!serviceRepository.existsById(id)) {
             throw new IllegalArgumentException("Service not found with ID: " + id);
