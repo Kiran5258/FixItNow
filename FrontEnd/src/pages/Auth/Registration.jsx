@@ -302,7 +302,7 @@ export default function Registration() {
 
               <input
                 type="text"
-                placeholder="Availability (e.g., Mon - Fri 9.00am-5.00pm)"
+                placeholder="Availability (e.g., Mon-Fri 9:00-18:00)"
                 value={availability}
                 onChange={(e) => setAvailability(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-500"

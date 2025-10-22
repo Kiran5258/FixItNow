@@ -1,23 +1,16 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
-import Home from "./pages/Dashboard/Home";
+import Userprovider from "./content/Userprovider";
 import Registration from "./pages/Auth/Registration";
 import Login from "./pages/Auth/Login";
 import ProviderDashboard from "./pages/Dashboard/ProviderDashboard";
 import CustomerDashboard from "./pages/Dashboard/CustomerDashboard";
 import AdminDashboard from "./pages/Dashboard/AdminDashboard";
-
 import ProtectedRoute from "./components/ProtectedRoute";
-import { AuthProvider } from "./context/AuthContext";
-import ProviderDetailPage from "./pages/provider/ProviderDetailPage";
-import BookingSummaryPage from "./pages/Customer/BookingSummaryPage";
 
 function App() {
   return (
-    <AuthProvider>
+    <Userprovider>
         <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
           <Route path="/register" element={<Registration />} />
           <Route path="/login" element={<Login />} />
           {/* Protected Routes */}
@@ -45,31 +38,9 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          {/* Provider Detail Page */}
-          <Route
-            path="/provider/:id"
-            element={
-              <ProtectedRoute>
-                <ProviderDetailPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Booking Summary Page */}
-          <Route
-            path="/booking-summary"
-            element={
-              <ProtectedRoute>
-                <BookingSummaryPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Catch-all route */}
-          <Route path="*" element={<Home />} />
         </Routes>
-    </AuthProvider>
+      
+    </Userprovider>
   );
 }
 

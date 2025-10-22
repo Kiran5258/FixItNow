@@ -18,7 +18,7 @@ public class Review {
 
     @ManyToOne
     @JoinColumn(name = "booking_id")
-    private Booking booking; 
+    private Booking booking; // optional
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
@@ -28,16 +28,9 @@ public class Review {
     @JoinColumn(name = "provider_id", nullable = false)
     private User provider;
 
-    @ManyToOne
-    @JoinColumn(name = "service_id", nullable = false)
-    private ServiceProvider service;
-
     private Integer rating; // 1-5
 
     private String comment;
-
-    @Column(length = 1000)
-    private String reply;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 }

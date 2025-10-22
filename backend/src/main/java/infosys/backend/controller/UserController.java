@@ -82,20 +82,5 @@ public class UserController {
         return ResponseEntity.ok("User deleted successfully");
     }
 
-    // Find user by username
-@PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('PROVIDER')")
-@GetMapping("/username/{username}")
-public ResponseEntity<User> getUserByUsername(@PathVariable String username, Authentication auth) {
-    User currentUser = (User) auth.getPrincipal();
-
-    // Allow access if admin or the user themselves
-    if (!currentUser.getRole().name().equals("ADMIN") && !currentUser.getName().equals(username)) {
-        return ResponseEntity.status(403).build();
-    }
-
-    return ResponseEntity.ok(userService.findByUsername(username));
-}
-
-
     
 }

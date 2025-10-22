@@ -53,45 +53,24 @@ export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const deleteUser = (id) => API.delete(`/users/${id}`);
 export const getUserByEmail = (email) => API.get(`/users/email/${email}`);
 
-
-// BOOKING APIs
-export const createBooking = (data) => API.post("/bookings/create", data);
-export const getBookingsByCustomer = (customerId) =>
-  API.get(`/bookings/customer/${customerId}`);
-export const getBookingsByProvider = (providerId) =>
-  API.get(`/bookings/provider/${providerId}`);
-export const updateBookingStatus = (bookingId, status) =>
-  API.put(`/bookings/updateStatus/${bookingId}?status=${status}`);
-// ADMIN: Get all bookings
-export const getAllBookings = () => API.get("/bookings/all");
-
-
-
 //
 // =====================
-// REVIEW APIs
+// BOOKING APIs (token required)
 // =====================
+export const getBookingsByCustomer = (customerId) =>
+  API.get(`/bookings/customer/${customerId}`);
 
-// ➕ Add a new review
-export const addReview = (reviewData) => API.post("/reviews/add", reviewData);
+// Create a new booking (CUSTOMER)
+export const createBooking = (bookingData) => API.post("/bookings/create", bookingData);
 
-// 📖 Get all reviews for a specific provider
-export const getReviewsByProvider = (providerId) =>
-  API.get(`/reviews/provider/${providerId}`);
+// Get all bookings for a customer (CUSTOMER or ADMIN)
+export const getCustomerBookings = (customerId) =>
+  API.get(`/bookings/customer/${customerId}`);
 
-// ⭐ Get average rating for a provider
-export const getProviderAverageRating = (providerId) =>
-  API.get(`/reviews/provider/${providerId}/average`);
+// Get all bookings for a provider (PROVIDER or ADMIN)
+export const getProviderBookings = (providerId) =>
+  API.get(`/bookings/provider/${providerId}`);
 
-// 👤 Get all reviews written by a specific customer
-export const getReviewsByCustomer = (customerId) =>
-  API.get(`/reviews/customer/${customerId}`);
-
-// ✏️ Update an existing review
-export const updateReview = (reviewId, reviewData) =>
-  API.put(`/reviews/update/${reviewId}`, reviewData);
-
-// 🗑️ Delete a review (admin or review owner)
-export const deleteReview = async (reviewId) => {
-  API.delete(`/reviews/${reviewId}`);
-};
+// ✅ Update booking status (PROVIDER or ADMIN)
+export const updateBookingStatus = (bookingId, status) =>
+  API.put(`/bookings/updateStatus/${bookingId}?status=${status}`);
