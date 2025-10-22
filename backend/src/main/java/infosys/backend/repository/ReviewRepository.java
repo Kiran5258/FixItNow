@@ -34,4 +34,14 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Transactional
     @Query("DELETE FROM Review r WHERE r.service.id = :serviceId")
     void deleteByServiceId(@Param("serviceId") Long serviceId);
+    @Transactional
+@Modifying
+@Query("DELETE FROM Review r WHERE r.customer.id = :userId")
+void deleteByCustomerId(@Param("userId") Long userId);
+
+@Transactional
+@Modifying
+@Query("DELETE FROM Review r WHERE r.provider.id = :userId")
+void deleteByProviderId(@Param("userId") Long userId);
+
 }
