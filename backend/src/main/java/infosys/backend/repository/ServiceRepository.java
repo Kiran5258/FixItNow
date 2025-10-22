@@ -14,13 +14,12 @@ public interface ServiceRepository extends JpaRepository<ServiceProvider, Long> 
     // Find all services by category
     List<ServiceProvider> findByCategory(String category);
 
-    // Find all services by provider
+    // Find all services by provider ID
     List<ServiceProvider> findByProviderId(Long providerId);
 
+    // Delete all services of a specific provider
+    @Modifying
     @Transactional
-@Modifying
-@Query("DELETE FROM ServiceProvider s WHERE s.provider.id = :userId")
-void deleteByProviderId(@Param("userId") Long userId);
-
-    
+    @Query("DELETE FROM ServiceProvider s WHERE s.provider.id = :userId")
+    void deleteByProviderId(@Param("userId") Long userId);
 }

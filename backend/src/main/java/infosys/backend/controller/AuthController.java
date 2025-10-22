@@ -23,13 +23,12 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
-        
 
         // 1️⃣ Create user
         User registeredUser = authService.register(request);
 
         // 2️⃣ If provider, create service
-        if (registeredUser.getRole() == Role.PROVIDER) {
+        if (registeredUser != null && registeredUser.getRole() == Role.PROVIDER) { // ✅ added null check
             ServiceRequest serviceRequest = ServiceRequest.builder()
                     .category(request.getCategory())
                     .subcategory(request.getSubcategory())

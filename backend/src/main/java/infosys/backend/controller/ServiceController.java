@@ -22,27 +22,30 @@ import java.util.stream.Collectors;
 public class ServiceController {
 
     private final ServiceProviderService serviceProviderService;
-    private final UserRepository userRepository; // Inject UserRepository to update profileCompleted
+    private final UserRepository userRepository;
 
     // ✅ Create service (PROVIDER only)
-
+    @PreAuthorize("hasRole('PROVIDER')")
     @PostMapping
     public ResponseEntity<ServiceResponse> createService(@RequestBody ServiceRequest request) {
 
-        // Get logged-in user's email from JWT
+        // Get logged-in user's email safely
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        User user = (User) authentication.getPrincipal(); // cast to your User entity
-        String providerEmail = user.getEmail();
+        Object principal = authentication.getPrincipal();
 
-        // 🔹 Debug log
-        System.out.println("Trying to fetch provider with email: " + providerEmail);
+        String providerEmail;
+        if (principal instanceof User) {
+            providerEmail = ((User) principal).getEmail();
+        } else if (principal instanceof org.springframework.security.core.userdetails.User userDetails) {
+            providerEmail = userDetails.getUsername();
+        } else {
+            throw new RuntimeException("Unauthorized: Invalid user principal");
+        }
 
         // Create service
         ServiceProvider service = serviceProviderService.createService(request, providerEmail);
 
-        // ✅ Mark profile as completed if not already
-
-        // Build response DTO
+        // Build response
         ServiceResponse response = ServiceResponse.builder()
                 .id(service.getId())
                 .providerId(service.getProvider().getId())
@@ -79,29 +82,30 @@ public class ServiceController {
         return ResponseEntity.ok(services);
     }
 
-    // ✅ Get service by ID
+    // ✅ Get service by provider
     @GetMapping("/provider/{providerId}")
     public ResponseEntity<List<ServiceResponse>> getServicesByProvider(@PathVariable Long providerId) {
         List<ServiceProvider> services = serviceProviderService.getServicesByProvider(providerId);
 
         List<ServiceResponse> response = services.stream()
-            .map(service -> ServiceResponse.builder()
-                    .id(service.getId())
-                    .providerId(service.getProvider().getId())
-                    .providerName(service.getProvider().getName())
-                    .category(service.getCategory())
-                    .subcategory(service.getSubcategory())
-                    .description(service.getDescription())
-                    .price(service.getPrice())
-                    .availability(service.getAvailability())
-                    .location(service.getLocation())
-                    .build())
-            .toList();
+                .map(service -> ServiceResponse.builder()
+                        .id(service.getId())
+                        .providerId(service.getProvider().getId())
+                        .providerName(service.getProvider().getName())
+                        .category(service.getCategory())
+                        .subcategory(service.getSubcategory())
+                        .description(service.getDescription())
+                        .price(service.getPrice())
+                        .availability(service.getAvailability())
+                        .location(service.getLocation())
+                        .build())
+                .toList();
 
         return ResponseEntity.ok(response);
     }
 
-    // ✅ Update service by ID (Provider/Admin only)
+    // ✅ Update service (Provider/Admin only)
+    @PreAuthorize("hasAnyRole('PROVIDER','ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ServiceResponse> updateService(
             @PathVariable Long id,
@@ -124,13 +128,11 @@ public class ServiceController {
         return ResponseEntity.ok(response);
     }
 
-    // ✅ Delete service by ID (Provider/Admin only)
+    // ✅ Delete service (Provider/Admin only)
+    @PreAuthorize("hasAnyRole('PROVIDER','ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteService(@PathVariable Long id) {
         serviceProviderService.deleteService(id);
         return ResponseEntity.noContent().build();
     }
-
-    
-
 }

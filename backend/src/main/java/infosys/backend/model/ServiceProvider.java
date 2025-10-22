@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = "provider")
+@ToString(exclude = "provider") // Exclude provider to prevent recursive toString()
 public class ServiceProvider {
 
     @Id
@@ -25,10 +25,8 @@ public class ServiceProvider {
     // Provider offering the service
     @ManyToOne
     @JoinColumn(name = "provider_id", referencedColumnName = "id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference // Avoid infinite recursion with User.services
     private User provider;
-
-    
 
     @Column(nullable = false)
     private String category; // e.g., Electrician, Plumber
@@ -38,8 +36,8 @@ public class ServiceProvider {
     @Column(columnDefinition = "TEXT")
     private String description; // Detailed service description
 
-    @Column(nullable = false)
-    private BigDecimal price; // Service price (better precision than Double)
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price; // Use precision and scale for accurate money representation
 
     private String availability; // Could be JSON string or formatted text
 
@@ -48,6 +46,4 @@ public class ServiceProvider {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // Auto-generated timestamp
-
-    
 }

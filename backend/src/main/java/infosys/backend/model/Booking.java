@@ -5,6 +5,7 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
 import infosys.backend.enums.BookingStatus;
 
 @Entity
@@ -36,9 +37,16 @@ public class Booking {
     private String timeSlot;
 
     @Enumerated(EnumType.STRING)
-    private BookingStatus status = BookingStatus.PENDING;
+    private BookingStatus status;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
-    
+    @PrePersist
+    private void prePersist() {
+        if (status == null) {
+            status = BookingStatus.PENDING; // Ensure default enum value
+        }
+    }
 }

@@ -33,14 +33,20 @@ public class ReviewController {
     @GetMapping("/provider/{providerId}")
     public List<Review> getProviderReviews(@PathVariable Long providerId) {
         User provider = userService.getUserById(providerId);
+        if (provider == null) {                          // ✅ Added null check
+            throw new RuntimeException("Provider not found");
+        }
         return reviewService.getReviewsByProvider(provider);
     }
 
     // Get average rating for a provider
     @PreAuthorize("hasAnyRole('CUSTOMER','PROVIDER','ADMIN')")
     @GetMapping("/provider/{providerId}/average")
-    public double getProviderAverageRating(@PathVariable Long providerId) {
+    public Double getProviderAverageRating(@PathVariable Long providerId) { // ✅ Changed 'double' → 'Double'
         User provider = userService.getUserById(providerId);
+        if (provider == null) {                          // ✅ Added null check
+            throw new RuntimeException("Provider not found");
+        }
         return reviewService.getAverageRating(provider);
     }
 }
