@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiHome, FiUsers, FiLogOut, FiClock, FiXCircle,
@@ -18,40 +18,43 @@ const rustBrown = "#6e290cff";
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("home");
   const [users, setUsers] = useState([]);
   const [services, setServices] = useState([]);
-  // const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [activeTab, setActiveTab] = useState("home");
 
+  // Fetch Users
   useEffect(() => {
-    loadUsers();
-    loadServices();
-    // loadBookings();
+    async function fetchUsers() {
+      setLoadingUsers(true);
+      try {
+        const res = await getAllUsers();
+        setUsers(res.data);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch users");
+      } finally {
+        setLoadingUsers(false);
+      }
+    }
+    fetchUsers();
   }, []);
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await getAllUsers();
-      setUsers(res.data);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to fetch users");
-    } finally {
-      setLoading(false);
+  // Fetch Services
+  useEffect(() => {
+    async function fetchServices() {
+      try {
+        const res = await getAllServices();
+        setServices(res.data);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch services");
+      }
     }
-  };
-
-  const loadServices = async () => {
-    try {
-      const res = await getAllServices();
-      setServices(res.data);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to fetch services");
-    }
-  };
+    fetchServices();
+  }, []);
 
   // Fetch Bookings from backend
   useEffect(() => {
@@ -76,6 +79,12 @@ export default function AdminDashboard() {
     localStorage.removeItem("token");
     navigate("/login");
   };
+
+  const sidebarItems = [
+    { name: "Home", icon: <FiHome className="text-white" />, key: "home" },
+    { name: "Users", icon: <BiUserCircle className="text-white" />, key: "users" },
+    { name: "Services", icon: <MdAdminPanelSettings className="text-white" />, key: "services" },
+  ];
 
   return (
     <div className="flex min-h-screen bg-white text-black">
@@ -123,8 +132,13 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {activeTab === "users" && <UsersPanel users={users} setUsers={setUsers} />}
-        {activeTab === "services" && <ServicesPanel services={services} setServices={setServices} />}
+        {activeTab === "users" && (
+          <UsersCardFull users={users} loading={loadingUsers} setUsers={setUsers} />
+        )}
+
+        {activeTab === "services" && (
+          <ServicesCardFull services={services} setServices={setServices} />
+        )}
       </main>
     </div>
   );

@@ -92,5 +92,6 @@ export const updateReview = (reviewId, reviewData) =>
   API.put(`/reviews/update/${reviewId}`, reviewData);
 
 // 🗑️ Delete a review (admin or review owner)
-export const deleteReview = (reviewId) =>
-  API.delete(`/reviews/delete/${reviewId}`);
+export const deleteReview = async (reviewId) => {
+  API.delete(`/reviews/${reviewId}`);
+};

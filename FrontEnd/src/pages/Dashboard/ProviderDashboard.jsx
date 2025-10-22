@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser } from "react-icons/fi";
 import { BiClipboard } from "react-icons/bi";
 import { GiHammerNails } from "react-icons/gi";
-import { AiOutlineCheckCircle } from "react-icons/ai";
+import { AiOutlineCheckCircle, AiOutlineRadiusSetting } from "react-icons/ai";
 import { FaRegLightbulb } from "react-icons/fa";
 
 import {
@@ -14,8 +14,13 @@ import {
   createService,
   getBookingsByProvider,
   updateUser,
-  updateBookingStatus
+  updateBookingStatus,
+  getProviderAverageRating,
+  getReviewsByProvider,
+  deleteReview
+  
 } from "../../services/api";
+import { Md18UpRating, MdReviews } from "react-icons/md";
 
 const rustBrown = "#6e290cff";
 
@@ -28,6 +33,8 @@ export default function ProviderDashboard() {
   const [activeTab, setActiveTab] = useState("home");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [error, setError] = useState(false);
+  const [reviews, setReviews] = useState([]);
+
   
 
   // Modal state
@@ -39,6 +46,9 @@ export default function ProviderDashboard() {
       location: "",
     });
 
+    const [respectScore, setRespectScore] = useState(0);
+  const [respectLevel, setRespectLevel] = useState("Newbie");
+  const [averageRating, setAverageRating] = useState(0);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -50,7 +60,39 @@ export default function ProviderDashboard() {
         setServices(servicesRes.data || []);
 
         const bookingsRes = await getBookingsByProvider(providerData.id);
+        const bookingsData = bookingsRes.data || [];
         setBookings(bookingsRes.data || []);
+        // Calculate Respect
+        const ratingRes = await getProviderAverageRating(providerData.id);
+      const avgRating = ratingRes.data || 0;
+      setAverageRating(avgRating);
+
+      const reviewsRes = await getReviewsByProvider(providerData.id);
+       const reviewsData = reviewsRes.data || [];
+      setReviews(reviewsRes.data || []);
+
+      // Calculate Respect Score using average rating from backend
+       const completedBookings = bookingsData.filter(b => b.status?.toLowerCase() === "completed").length;
+      const pendingBookings = bookingsData.filter(b => b.status?.toLowerCase() === "pending").length;
+      const cancelledBookings = bookingsData.filter(b => b.status?.toLowerCase() === "cancelled").length;
+
+      // Assign points: Completed = 5, Pending = 2, Cancelled = 0
+      const completedPoints = completedBookings * 5;
+      const pendingPoints = pendingBookings * 2;
+      const cancelledPoints = cancelledBookings * 0;
+
+      // Weight the average rating by number of reviews (max effect at 5 reviews)
+      const reviewCount = reviewsData.length;
+      const ratingWeight = Math.min(reviewCount, 5) / 5; // 1 review = 0.2, 5 or more = 1
+      const ratingPoints = avgRating * 20 * ratingWeight; // scale to 0-100
+
+      const totalScore = Math.min(100, completedPoints + pendingPoints + cancelledPoints + ratingPoints);
+      setRespectScore(totalScore);
+
+      // Determine level
+      if (totalScore >= 80) setRespectLevel("Star Performer");
+      else if (totalScore >= 50) setRespectLevel("Trusted Provider");
+      else setRespectLevel("Newbie");
       } catch (err) {
         console.error("Error fetching provider data:", err);
         setError(true);
@@ -89,7 +131,8 @@ export default function ProviderDashboard() {
     { name: "Home", icon: <FiHome className="text-white" />, key: "home" },
     { name: "My Services", icon: <GiHammerNails className="text-white" />, key: "services" },
     { name: "Bookings", icon: <BiClipboard className="text-white" />, key: "bookings" },
-    { name: "Profile", icon: <FiUser className="text-white" />, key: "profile" }, // new
+    { name: "Profile", icon: <FiUser className="text-white" />, key: "profile" }, 
+    { name: "Reviews", icon: <MdReviews className="text-white" />, key: "reviews" }, 
 
   ];
 
@@ -129,7 +172,7 @@ export default function ProviderDashboard() {
         {activeTab === "home" && (
           <div className="space-y-6">
             <Greeting provider={provider} />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <MetricCard title="My Services" value={services.length} icon={<GiHammerNails style={{ color: rustBrown }} />} />
               <MetricCard title="Total Bookings" value={bookings.length} icon={<BiClipboard style={{ color: rustBrown }} />} />
               <MetricCard
@@ -137,6 +180,38 @@ export default function ProviderDashboard() {
                 value={bookings.filter(b => b.status?.toLowerCase() === "completed").length}
                 icon={<AiOutlineCheckCircle style={{ color: rustBrown }} />}
               />
+              <MetricCard
+                title="Avg Rating"
+                value={averageRating.toFixed(2)}
+                icon={<MdReviews style={{ color: rustBrown }} />}
+              />
+            </div>
+            <div className="mt-6 bg-indigo-50 p-5 rounded-xl shadow">
+              <h2 className="text-xl font-bold mb-3" style={{ color: rustBrown }}>Respect & Recognition</h2>
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                <div className="flex-1">
+                  <p className="text-gray-700 mb-1">Respect Score</p>
+                  <div className="bg-gray-200 h-4 rounded-full">
+                    <div
+                      className="h-4 rounded-full bg-indigo-600 transition-all duration-500"
+                      style={{ width: `${respectScore}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-gray-800 mt-1 font-semibold">{respectScore} / 100</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <p className="text-gray-700 mb-1">Level</p>
+                  <span className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold">{respectLevel}</span>
+                </div>
+                <div className="flex gap-1 items-center">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <span key={i} className={i < Math.round(averageRating) ? "text-yellow-400" : "text-gray-300"}>★</span>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                Complete bookings and maintain high ratings to increase your Respect Score and level up!
+              </p>
             </div>
             <ServicePerformance services={services} bookings={bookings} />
             <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded shadow flex items-center gap-3">
@@ -174,6 +249,12 @@ export default function ProviderDashboard() {
   handleCancelProfile={handleCancelProfile}
 />
 )}
+
+{activeTab === "reviews" && (
+  <ReviewsTab reviews={reviews}
+   />
+)}
+
 
       </main>
     </div>
@@ -642,6 +723,86 @@ function ProfileTab({
             </button>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ReviewsTab({ reviews }) {
+  const [allReviews, setAllReviews] = useState(reviews || []);
+  const [replyText, setReplyText] = useState("");
+  const [selectedReview, setSelectedReview] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Function to post a reply
+  const handleReply = async () => {
+    if (!replyText || !selectedReview) return;
+    setLoading(true);
+    try {
+      // Call backend API
+      await addReviewReply(selectedReview.id, { reply: replyText });
+
+      // Update local state to show reply immediately
+      setAllReviews(allReviews.map(r =>
+        r.id === selectedReview.id ? { ...r, reply: replyText } : r
+      ));
+
+      setReplyText("");
+      setSelectedReview(null);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to reply to review.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to delete review
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Are you sure you want to delete this review?")) return;
+    try {
+      await deleteReview(reviewId); // make sure this API exists in your services/api
+      setAllReviews(allReviews.filter(r => r.id !== reviewId));
+      alert("Review deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete review.");
+    }
+  };
+
+  if (!allReviews || allReviews.length === 0) return <p>No reviews yet.</p>;
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-2xl font-bold mb-4" style={{ color: rustBrown }}>Customer Reviews</h2>
+      <div className="flex flex-col gap-4">
+        {allReviews.map((r) => (
+          <div key={r.id} className="bg-white border rounded-xl p-4 shadow flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold">{r.customer?.name || "Anonymous"}</span>
+              <span className="text-yellow-400">{'★'.repeat(r.rating) + '☆'.repeat(5 - r.rating)}</span>
+            </div>
+            <p className="text-gray-700">{r.comment}</p>
+
+            <div className="text-sm text-gray-500 flex gap-2 flex-wrap">
+              {r.service?.category && <span className="px-2 py-1 bg-gray-200 rounded">{`Category: ${r.service.category}`}</span>}
+              {r.service?.subcategory && <span className="px-2 py-1 bg-gray-200 rounded">{`Subcategory: ${r.service.subcategory}`}</span>}
+              
+            </div>
+
+            
+
+            {/* Delete Review Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => handleDeleteReview(r.id)}
+                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams ,useNavigate} from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
 import {
   getAllServices,
@@ -53,15 +53,12 @@ export default function ProviderDetailPage() {
   const navigate = useNavigate();
 
   const [providerServices, setProviderServices] = useState([]);
+  const [selectedService, setSelectedService] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(0);
   const [activeTab, setActiveTab] = useState("services");
   const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
   const [bookingService, setBookingService] = useState(null);
-
-  const [servicePage, setServicePage] = useState(1);
-  const [reviewPage, setReviewPage] = useState(1);
-  const itemsPerPage = 4;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,12 +68,14 @@ export default function ProviderDetailPage() {
           (s) => s.providerId === parseInt(id)
         );
         setProviderServices(services);
-
-        const reviewsRes = await getReviewsByProvider(id);
-        setReviews(reviewsRes.data || []);
+        setSelectedService(services[0]); // default first service
 
         const avgRes = await getProviderAverageRating(id);
         setAverageRating(avgRes.data || 0);
+
+        // fetch reviews only for the first service initially
+        const reviewsRes = await getReviewsByProvider(id);
+        setReviews(reviewsRes.data || []);
       } catch (err) {
         console.error(err);
       }
@@ -87,24 +86,26 @@ export default function ProviderDetailPage() {
   const handleSubmitReview = async () => {
     if (!user) return alert("Please log in to submit a review.");
     if (!newReview.comment.trim()) return alert("Please write a comment.");
-
     try {
       await addReview({
         customer: { id: user.id },
-        provider: { id: providerServices[0].providerId },
-        service: { id: providerServices[0].id },
+        provider: { id: parseInt(id) },
+        service: { id: selectedService.id },
         rating: newReview.rating,
         comment: newReview.comment,
       });
       setNewReview({ rating: 5, comment: "" });
       const res = await getReviewsByProvider(id);
       setReviews(res.data || []);
-      const avgRes = await getProviderAverageRating(id);
-      setAverageRating(avgRes.data || 0);
     } catch (err) {
       console.error(err);
       alert("Failed to submit review.");
     }
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/customer-dashboard");
   };
 
   if (!providerServices.length)
@@ -115,27 +116,11 @@ export default function ProviderDetailPage() {
     );
 
   const provider = providerServices[0];
-  const paginatedServices = providerServices.slice(
-    (servicePage - 1) * itemsPerPage,
-    servicePage * itemsPerPage
+  const filteredReviews = reviews.filter(
+    (r) => r.service?.id === selectedService?.id
   );
-  const paginatedReviews = reviews.slice(
-    (reviewPage - 1) * itemsPerPage,
-    reviewPage * itemsPerPage
-  );
-  const servicePages = Math.ceil(providerServices.length / itemsPerPage);
-  const reviewPages = Math.ceil(reviews.length / itemsPerPage);
-  
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1); // go back if possible
-    } else {
-      navigate("/customer-dashboard"); // fallback page
-    }
-  };
 
   return (
-    
     <div className="max-w-7xl mx-auto p-6 bg-gradient-to-b from-[#f6e5da] to-white min-h-screen">
       <div className="mb-6">
         <button
@@ -146,60 +131,52 @@ export default function ProviderDetailPage() {
           Back
         </button>
       </div>
+
       <div className="flex flex-col lg:flex-row gap-8">
         {/* ---------- LEFT PROFILE PANEL ---------- */}
-        <div className="lg:w-1/3 bg-gradient-to-br from-[#6e290c] to-[#a44a1d] rounded-3xl p-6 text-center lg:text-left shadow-2xl sticky top-8 h-fit transform hover:scale-[1.01] transition-all duration-300">
+        <div className="lg:w-1/3 bg-gradient-to-br from-[#6e290c] to-[#a44a1d] rounded-3xl p-6 text-center lg:text-left shadow-2xl sticky top-8 h-fit">
           <div className="flex flex-col items-center lg:items-start space-y-4">
             <img
               src={`https://ui-avatars.com/api/?name=${provider.providerName}&background=6e290c&color=fff&size=128`}
               alt="Provider"
               className="w-28 h-28 rounded-full border-4 border-white shadow-md"
             />
-            <h2 className="text-3xl font-bold text-white tracking-tight">
+            <h2 className="text-3xl font-bold text-white">
               {provider.providerName}
             </h2>
             <p className="text-white/80">{provider.location}</p>
             <span className="px-3 py-1 bg-white text-[#6e290c] rounded-full font-semibold shadow">
               {provider.category}
             </span>
-
             <div className="flex justify-between w-full text-center mt-4">
-              {[ 
+              {[
                 { label: "Rating", value: averageRating.toFixed(1), color: "text-yellow-300" },
                 { label: "Services", value: providerServices.length, color: "text-green-300" },
                 { label: "Reviews", value: reviews.length, color: "text-orange-300" },
               ].map((stat, i) => (
-                <div key={i} className="bg-white/20 rounded-xl p-3 flex-1 mx-1 backdrop-blur-sm">
+                <div key={i} className="bg-white/20 rounded-xl p-3 flex-1 mx-1">
                   <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
                   <p className="text-xs text-white/80">{stat.label}</p>
                 </div>
               ))}
             </div>
-
             <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
               <h3 className="font-semibold mb-1">⏰ Availability</h3>
-              <p className="text-white/90">{provider.availability || "Not specified"}</p>
+              <p>{provider.availability || "Not specified"}</p>
             </div>
-
             <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
               <h3 className="font-semibold mb-1">👤 About</h3>
-              <p className="text-white/90 text-sm leading-relaxed">
-                {provider.about || "This provider hasn’t added any details yet."}
-              </p>
+              <p className="text-sm">{provider.about || "This provider hasn’t added any details yet."}</p>
             </div>
-
             <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
               <h3 className="font-semibold mb-1">📞 Contact</h3>
               <p>Email: {provider.email || "Not available"}</p>
               <p>Phone: {provider.phone || "Not available"}</p>
-              <button className="mt-3 w-full py-2 bg-white/30 rounded-xl font-semibold hover:bg-white/40 transition-all duration-200 text-white">
-                Message Provider
-              </button>
             </div>
           </div>
         </div>
 
-        {/* ---------- RIGHT PANEL ---------- */}
+        {/* ---------- RIGHT SIDE ---------- */}
         <div className="lg:w-2/3 flex-1">
           {/* Tabs */}
           <div className="flex gap-4 border-b border-gray-200 pb-2 mb-6">
@@ -207,9 +184,9 @@ export default function ProviderDetailPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 text-sm font-semibold rounded-full transition-all duration-300 ${
+                className={`px-5 py-2 text-sm font-semibold rounded-full transition-all ${
                   activeTab === tab
-                    ? "bg-[#6e290c] text-white shadow-lg"
+                    ? "bg-[#6e290c] text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -221,73 +198,77 @@ export default function ProviderDetailPage() {
           {/* Services Tab */}
           {activeTab === "services" && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {paginatedServices.map((service) => {
-                  const available =
-                    service.availability &&
-                    service.availability.toLowerCase() !== "not available";
-                  return (
-                    <div
-                      key={service.id}
-                      className="relative bg-white rounded-2xl shadow-md p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-[#f1c6ad]"
-                    >
-                      
-                      <h3 className="text-lg font-bold text-[#6e290c] mb-1">{service.subcategory}</h3>
-                      <p className="text-gray-600 text-sm line-clamp-2">{service.description}</p>
-                      <div className="flex justify-between items-center mt-4">
-                        <span className="text-[#6e290c] font-bold text-lg">₹{service.price}</span>
-                        <button
-                          onClick={() => available && setBookingService(service)}
-                          disabled={!available}
-                          className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 ${
-                            available
-                              ? "bg-[#6e290c] text-white hover:bg-[#a44a1d]"
-                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          }`}
-                        >
-                          Book Now
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* Selected Service */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-[#f1c6ad]">
+                <h3 className="text-2xl font-bold text-[#6e290c] mb-2">
+                  {selectedService.subcategory}
+                </h3>
+                <p className="text-gray-700 mb-4">{selectedService.description}</p>
+                <p className="font-semibold text-[#6e290c] text-lg mb-2">
+                  Price: ₹{selectedService.price}
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Availability: {selectedService.availability || "Not specified"}
+                </p>
+                <button
+                  onClick={() => setBookingService(selectedService)}
+                  className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
+                >
+                  Book Now
+                </button>
               </div>
 
-              {/* Pagination */}
-              {servicePages > 1 && (
-                <div className="flex justify-center gap-2 mt-6">
-                  {Array.from({ length: servicePages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setServicePage(i + 1)}
-                      className={`px-3 py-1 rounded-full text-sm ${
-                        servicePage === i + 1
-                          ? "bg-[#6e290c] text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
+              {/* Other Services */}
+              <h4 className="text-lg font-semibold text-[#6e290c] mb-3">
+                Other Services Offered
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {providerServices
+                  .filter((s) => s.id !== selectedService.id)
+                  .map((service) => (
+                    <div
+                      key={service.id}
+                      className="bg-white rounded-2xl shadow p-5 hover:shadow-lg transition border border-[#f1c6ad]"
                     >
-                      {i + 1}
-                    </button>
+                      <h3 className="text-lg font-bold text-[#6e290c] mb-1">
+                        {service.subcategory}
+                      </h3>
+                      <p className="text-gray-600 text-sm line-clamp-2 mb-2">
+                        {service.description}
+                      </p>
+                      <p className="text-[#6e290c] font-semibold mb-3">
+                        ₹{service.price}
+                      </p>
+                      <button
+                        onClick={() => setSelectedService(service)}
+                        className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
+                      >
+                        View Service
+                      </button>
+                    </div>
                   ))}
-                </div>
-              )}
+              </div>
             </>
           )}
 
           {/* Reviews Tab */}
           {activeTab === "reviews" && (
             <div className="space-y-4">
-              {paginatedReviews.length === 0 && (
+              <h4 className="text-lg font-semibold text-[#6e290c]">
+                Reviews for {selectedService?.category} - {selectedService?.subcategory}
+              </h4>
+
+              {filteredReviews.length === 0 && (
                 <p className="text-gray-400 text-center mt-10 animate-pulse">
-                  No reviews yet.
+                  No reviews for this service yet.
                 </p>
               )}
-              {paginatedReviews.map((r) => {
+              {filteredReviews.map((r) => {
                 const name = r.customer?.name || "Customer";
                 return (
                   <div
                     key={r.id}
-                    className="bg-white rounded-2xl shadow-sm p-4 hover:shadow-lg transition-all border border-[#f1c6ad]"
+                    className="bg-white rounded-2xl shadow-sm p-4 border border-[#f1c6ad]"
                   >
                     <div className="flex gap-3 items-start">
                       <div className="w-10 h-10 rounded-full bg-[#6e290c] flex items-center justify-center text-white font-bold">
@@ -307,29 +288,9 @@ export default function ProviderDetailPage() {
                         <p className="text-gray-600 text-sm mt-1">{r.comment}</p>
                       </div>
                     </div>
-                    
                   </div>
                 );
               })}
-
-              {/* Pagination */}
-              {reviewPages > 1 && (
-                <div className="flex justify-center gap-2 mt-4">
-                  {Array.from({ length: reviewPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setReviewPage(i + 1)}
-                      className={`px-3 py-1 rounded-full text-sm ${
-                        reviewPage === i + 1
-                          ? "bg-[#6e290c] text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
 
               {/* Add Review */}
               <div className="bg-white rounded-2xl shadow-md p-5 mt-6 space-y-3 border border-[#f1c6ad]">
@@ -358,7 +319,7 @@ export default function ProviderDetailPage() {
                 />
                 <button
                   onClick={handleSubmitReview}
-                  className="w-full py-2 bg-[#6e290c] text-white font-semibold rounded-2xl shadow hover:bg-[#a44a1d] transition"
+                  className="w-full py-2 bg-[#6e290c] text-white font-semibold rounded-2xl hover:bg-[#a44a1d] transition"
                 >
                   Submit
                 </button>
@@ -368,7 +329,6 @@ export default function ProviderDetailPage() {
         </div>
       </div>
 
-      {/* Booking Modal */}
       {bookingService && (
         <BookingModal
           service={bookingService}
@@ -379,13 +339,11 @@ export default function ProviderDetailPage() {
     </div>
   );
 }
-
-// ---------- Booking Modal ----------
 function BookingModal({ service, customer, onClose }) {
   const [formData, setFormData] = useState({ bookingDate: "", timeSlot: "", notes: "" });
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();
 
   const { days: availableDays, slots: availableSlots } = parseAvailability(service.availability || "");
   const minDate = new Date().toISOString().split("T")[0];
@@ -398,7 +356,7 @@ function BookingModal({ service, customer, onClose }) {
       alert(`Provider is not available on ${DAYS[selected.getDay()]}`);
       setFormData({ ...formData, bookingDate: "", timeSlot: "" });
     } else {
-      setFormData({ ...formData, bookingDate: e.target.value, timeSlot: "" }); // reset slot when date changes
+      setFormData({ ...formData, bookingDate: e.target.value, timeSlot: "" });
     }
   };
 
@@ -427,17 +385,16 @@ function BookingModal({ service, customer, onClose }) {
         notes: formData.notes,
         status: "PENDING",
       });
-      navigate("/booking-summary", { 
-  state: { 
-    booking: { 
-      ...res.data,      // booking info from API
-      service,     
-      providerName: service.providerName || provider.providerName // fallback
-    } 
-  } 
-});
 
-      
+      navigate("/booking-summary", {
+        state: {
+          booking: {
+            ...res.data,
+            service,
+            providerName: service.providerName || "Provider",
+          },
+        },
+      });
       onClose();
     } catch (err) {
       setMessage("Booking failed: " + (err.response?.data?.message || err.message));
@@ -460,7 +417,7 @@ function BookingModal({ service, customer, onClose }) {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Date Picker */}
+          {/* Booking Date */}
           <div>
             <label className="block text-sm font-semibold text-[#6e290c] mb-1">Booking Date</label>
             <input
@@ -472,7 +429,7 @@ function BookingModal({ service, customer, onClose }) {
             />
           </div>
 
-          {/* Time Slots as Buttons */}
+          {/* Time Slots */}
           {formData.bookingDate && (
             <div>
               <label className="block text-sm font-semibold text-[#6e290c] mb-2">Select Time Slot</label>
@@ -507,7 +464,9 @@ function BookingModal({ service, customer, onClose }) {
             />
           </div>
 
-          {message && <p className="text-center text-sm text-red-500 bg-red-50 py-2 rounded-xl">{message}</p>}
+          {message && (
+            <p className="text-center text-sm text-red-500 bg-red-50 py-2 rounded-xl">{message}</p>
+          )}
 
           <button
             type="submit"

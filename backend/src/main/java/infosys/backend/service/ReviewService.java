@@ -1,11 +1,16 @@
 package infosys.backend.service;
 
+import infosys.backend.dto.ReviewResponseDTO;
 import infosys.backend.model.Review;
+import infosys.backend.model.ServiceProvider;
 import infosys.backend.model.User;
 import infosys.backend.repository.ReviewRepository;
 import infosys.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +31,7 @@ public class ReviewService {
         // Ensure timestamp is set
         review.setCreatedAt(LocalDateTime.now());
 
-        // Validate customer and provider exist
+        // Validate customer and provider
         if (review.getCustomer() != null && review.getCustomer().getId() != null) {
             Optional<User> customerOpt = userRepository.findById(review.getCustomer().getId());
             customerOpt.ifPresent(review::setCustomer);
@@ -48,7 +53,7 @@ public class ReviewService {
     }
 
     /**
-     * ✅ Get all reviews written by a specific customer (optional)
+     * ✅ Get all reviews written by a specific customer
      */
     public List<Review> getReviewsByCustomer(User customer) {
         return reviewRepository.findByCustomer(customer);
@@ -67,7 +72,26 @@ public class ReviewService {
     }
 
     /**
-     * ✅ Update an existing review (optional)
+     * ✅ Get all reviews for a specific service
+     */
+    public List<Review> getReviewsByService(ServiceProvider service) {
+        return reviewRepository.findByService(service);
+    }
+
+    /**
+     * ✅ Calculate average rating for a specific service
+     */
+    public double getAverageRatingByService(ServiceProvider service) {
+        List<Review> reviews = reviewRepository.findByService(service);
+        if (reviews.isEmpty()) return 0.0;
+        return reviews.stream()
+                      .mapToInt(Review::getRating)
+                      .average()
+                      .orElse(0.0);
+    }
+
+    /**
+     * ✅ Update an existing review
      */
     public Review updateReview(Long reviewId, Review newReview) {
         return reviewRepository.findById(reviewId)
@@ -80,7 +104,7 @@ public class ReviewService {
     }
 
     /**
-     * ✅ Delete a review (optional, admin or customer who posted it)
+     * ✅ Delete a review
      */
     public void deleteReview(Long reviewId) {
         if (reviewRepository.existsById(reviewId)) {
@@ -89,4 +113,52 @@ public class ReviewService {
             throw new RuntimeException("Review not found");
         }
     }
+
+    public ReviewResponseDTO addReply(Long reviewId, String reply) {
+    Review review = reviewRepository.findById(reviewId)
+            .orElseThrow(() -> new RuntimeException("Review not found"));
+
+    if (!review.getProvider().getId().equals(getCurrentUserId())) {
+        throw new RuntimeException("Unauthorized");
+    }
+
+    review.setReply(reply);
+    Review saved = reviewRepository.save(review);
+
+    return new ReviewResponseDTO(
+            saved.getId(),
+            saved.getBooking() != null ? saved.getBooking().getId() : null,
+            saved.getCustomer().getId(),
+            saved.getProvider().getId(),
+            saved.getService().getId(),
+            saved.getRating(),
+            saved.getComment(),
+            saved.getReply()
+    );
+
+    
+}
+
+
+
+
+
+
+    /**
+     * Helper method to get the currently logged-in user's ID
+     */
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new RuntimeException("No authenticated user found");
+        }
+
+        // Assuming username is unique and stored in authentication.getName()
+        return userRepository.findByName(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"))
+                .getId();
+    }
+
+    
+
 }
