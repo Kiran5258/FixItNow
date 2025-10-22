@@ -28,6 +28,8 @@ public class ServiceProvider {
     @JsonBackReference
     private User provider;
 
+    
+
     @Column(nullable = false)
     private String category; // e.g., Electrician, Plumber
 

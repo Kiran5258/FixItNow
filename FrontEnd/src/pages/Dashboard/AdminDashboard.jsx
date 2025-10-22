@@ -318,6 +318,8 @@ function ServiceCard({ service, services, setServices }) {
     if (!window.confirm("Are you sure you want to delete this service?")) return;
     try {
       await deleteService(service.id);
+      console.log("Deleting service id:", service.id);
+
       setServices(services.filter((s) => s.id !== service.id));
     } catch (err) {
       console.error(err);

@@ -182,11 +182,27 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
     setModalOpen(true);
   };
 
+  const handleDeleteService = async (serviceId) => {
+  if (!window.confirm("Are you sure you want to delete this service?")) return;
+
+  try {
+    await deleteService(serviceId); // Call backend API
+    setServices(prev => prev.filter(s => s.id !== serviceId)); // Remove from state
+    alert("Service deleted successfully!");
+  } catch (err) {
+    console.error("Failed to delete service:", err);
+    alert("Failed to delete service. Please try again.");
+  }
+};
   const handleSave = async () => {
     if (!newService.category || !newService.subcategory || !newService.description || !newService.price || !newService.availability || !newService.location) {
       alert("Please fill all fields including availability and location");
       return;
     }
+
+    // Delete Service Handler
+
+
 
     try {
       if (editingService) {
@@ -225,15 +241,17 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
             </b><br></br>
             <p className="text-sm text-black/60">Location: {service.location}</p>
             <p className="font-semibold text-lg mt-2">₹{service.price}</p>
-            
-            <div className="ml-30 flex gap-3">
-                <button onClick={() => openEditModal(service)} className="bg-gray-600 text-white px-3 py-1 rounded">Edit</button>
-                <button onClick={async () => {
-                  if (!window.confirm("Delete service?")) return;
-                  await deleteService(service.id);
-                  setServices(services.filter(s => s.id !== service.id));
-                }} className="bg-[#B7410E] text-white px-3 py-1 rounded">Delete</button>
-              </div>
+
+            <div className="flex gap-3 mt-2">
+              <button onClick={() => openEditModal(service)} className="bg-gray-600 text-white px-3 py-1 rounded">Edit</button>
+              <button
+  onClick={() => handleDeleteService(service.id)}
+  className="bg-[#B7410E] text-white px-3 py-1 rounded"
+>
+  Delete
+</button>
+
+            </div>
           </div>
         ))}
       </div>

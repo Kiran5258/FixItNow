@@ -1,6 +1,9 @@
 package infosys.backend.service;
 
 import infosys.backend.model.User;
+import infosys.backend.repository.BookingRepository;
+import infosys.backend.repository.ReviewRepository;
+import infosys.backend.repository.ServiceRepository;
 import infosys.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,6 +15,9 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
+    private final ReviewRepository reviewRepository;
+    private final ServiceRepository serviceRepository;
 
     // 🔹 Read all users
     public List<User> getAllUsers() {
@@ -49,8 +55,20 @@ public class UserService {
     // 🔹 Delete user
     public void deleteUser(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        userRepository.delete(user); // Now also deletes services
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+    // 2️⃣ Delete all bookings where this user is customer or provider
+    bookingRepository.deleteByCustomerId(id);
+    bookingRepository.deleteByProviderId(id);
+
+    // 3️⃣ Delete all reviews where this user is customer or provider
+    reviewRepository.deleteByCustomerId(id);
+    reviewRepository.deleteByProviderId(id);
+
+    serviceRepository.deleteByProviderId(id);
+
+    // 4️⃣ Delete the user (services will be deleted automatically because of cascade)
+    userRepository.deleteById(id);
     }
 
 }
