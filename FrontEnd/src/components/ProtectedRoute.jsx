@@ -1,17 +1,18 @@
-// src/components/ProtectedRoute.jsx
-import React, { useContext } from "react";
+import React from "react";
 import { Navigate } from "react-router-dom";
-import { userContext } from "../content/Userprovider";
+import { useAuth } from "../context/AuthContext";
 
 const ProtectedRoute = ({ children }) => {
-  const { user } = useContext(userContext);
+  const { isAuthenticated, loading } = useAuth();
 
-  // If no user is logged in, redirect to login page
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return <div>Loading...</div>; // or a spinner
   }
 
-  // Otherwise, allow access to the requested route
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
   return children;
 };
 

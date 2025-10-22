@@ -1,46 +1,58 @@
 package infosys.backend.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
 import infosys.backend.model.Review;
 import infosys.backend.model.User;
 import infosys.backend.service.ReviewService;
 import infosys.backend.service.UserService;
-
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/reviews")
+@RequestMapping("/api/reviews")
+@RequiredArgsConstructor
 public class ReviewController {
 
-    @Autowired
-    private ReviewService reviewService;
+    private final ReviewService reviewService;
+    private final UserService userService;
 
-    @Autowired
-    private UserService userService;
-
-    // Add a new review
+    // ✅ Add a new review
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/add")
-    public Review addReview(@RequestBody Review review) {
-        return reviewService.addReview(review);
+    public ResponseEntity<Review> addReview(@RequestBody Review review) {
+        try {
+            Review savedReview = reviewService.addReview(review);
+            return ResponseEntity.ok(savedReview);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    // Get reviews for a provider
+    // ✅ Get all reviews for a provider
     @PreAuthorize("hasAnyRole('CUSTOMER','PROVIDER','ADMIN')")
     @GetMapping("/provider/{providerId}")
-    public List<Review> getProviderReviews(@PathVariable Long providerId) {
-        User provider = userService.getUserById(providerId);
-        return reviewService.getReviewsByProvider(provider);
+    public ResponseEntity<List<Review>> getProviderReviews(@PathVariable Long providerId) {
+        try {
+            User provider = userService.getUserById(providerId);
+            List<Review> reviews = reviewService.getReviewsByProvider(provider);
+            return ResponseEntity.ok(reviews);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
-    // Get average rating for a provider
+    // ✅ Get average rating for a provider
     @PreAuthorize("hasAnyRole('CUSTOMER','PROVIDER','ADMIN')")
     @GetMapping("/provider/{providerId}/average")
-    public double getProviderAverageRating(@PathVariable Long providerId) {
-        User provider = userService.getUserById(providerId);
-        return reviewService.getAverageRating(provider);
+    public ResponseEntity<Double> getProviderAverageRating(@PathVariable Long providerId) {
+        try {
+            User provider = userService.getUserById(providerId);
+            double avgRating = reviewService.getAverageRating(provider);
+            return ResponseEntity.ok(avgRating);
+        } catch (Exception e) {
+            return ResponseEntity.ok(0.0);
+        }
     }
 }

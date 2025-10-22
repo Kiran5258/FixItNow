@@ -14,7 +14,7 @@ import infosys.backend.service.UserService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/bookings")
+@RequestMapping("/api/bookings")
 public class BookingController {
 
     @Autowired
@@ -53,4 +53,12 @@ public class BookingController {
                                        @RequestParam BookingStatus status) {
         return bookingService.updateBookingStatus(bookingId, status);
     }
+
+    // ✅ Get all bookings (Admin only)
+@PreAuthorize("hasRole('ADMIN')")
+@GetMapping("/all")
+public List<Booking> getAllBookings() {
+    return bookingService.getAllBookings();
+}
+
 }
