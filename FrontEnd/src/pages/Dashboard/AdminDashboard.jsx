@@ -1,63 +1,90 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllUsers, getAllServices } from "../../services/api";
-import Sidebar from "./Sidebar";
-import Metric from "./Metric";
-import UsersPanel from "../../panel/UsersPanel";
-import ServicesPanel from "../../panel/ServicePanel";
-import { FiUsers } from "react-icons/fi";
+import {
+  FiHome, FiUsers, FiLogOut, FiClock, FiXCircle,
+} from "react-icons/fi";
+import { BiClipboard, BiUserCircle } from "react-icons/bi";
+import { MdAdminPanelSettings } from "react-icons/md";
+import { FaUserCheck, FaUserTie } from "react-icons/fa";
+import { AiOutlineCheckCircle } from "react-icons/ai";
+import { GiElectric, GiHammerNails, GiBroom } from "react-icons/gi";
+import {
+  getAllUsers, deleteUser, updateUser, getAllServices,
+  updateService, deleteService, getAllBookings
+} from "../../services/api";
+
+const rustBrown = "#6e290cff";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("home");
   const [users, setUsers] = useState([]);
   const [services, setServices] = useState([]);
-  // const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [activeTab, setActiveTab] = useState("home");
 
+  // Fetch Users
   useEffect(() => {
-    loadUsers();
-    loadServices();
-    // loadBookings();
+    async function fetchUsers() {
+      setLoadingUsers(true);
+      try {
+        const res = await getAllUsers();
+        setUsers(res.data);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch users");
+      } finally {
+        setLoadingUsers(false);
+      }
+    }
+    fetchUsers();
   }, []);
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await getAllUsers();
-      setUsers(res.data);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to fetch users");
-    } finally {
-      setLoading(false);
+  // Fetch Services
+  useEffect(() => {
+    async function fetchServices() {
+      try {
+        const res = await getAllServices();
+        setServices(res.data);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch services");
+      }
     }
-  };
+    fetchServices();
+  }, []);
 
-  const loadServices = async () => {
-    try {
-      const res = await getAllServices();
-      setServices(res.data);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to fetch services");
+  // Fetch Bookings from backend
+  useEffect(() => {
+    async function fetchBookings() {
+      setLoadingBookings(true);
+      try {
+        const res = await getAllBookings();
+        // Sort latest first
+        const sorted = res.data.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
+        setBookings(sorted);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch bookings");
+      } finally {
+        setLoadingBookings(false);
+      }
     }
-  };
-
-  // const loadBookings = async () => {
-  //   try {
-  //     const res = await getAllBookings();
-  //     setBookings(res.data);
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // };
+    fetchBookings();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
+
+  const sidebarItems = [
+    { name: "Home", icon: <FiHome className="text-white" />, key: "home" },
+    { name: "Users", icon: <BiUserCircle className="text-white" />, key: "users" },
+    { name: "Services", icon: <MdAdminPanelSettings className="text-white" />, key: "services" },
+  ];
 
   return (
     <div className="flex min-h-screen bg-white text-black">
@@ -91,17 +118,27 @@ export default function AdminDashboard() {
       <main className="flex-1 p-6 bg-white">
         {activeTab === "home" && (
           <>
-            <h2 className="text-2xl font-bold mb-4">Dashboard Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Metric title="Total Users" value={users.length} />
-              <Metric title="Total Services" value={services.length} />
-              {/* <Metric title="Total Bookings" value={bookings.length} /> */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <MetricCard title="Total Users" value={users.length} icon={<FiUsers style={{ color: rustBrown }} />} />
+              <MetricCard title="Total Bookings" value={bookings.length} icon={<BiClipboard style={{ color: rustBrown }} />} />
+              <MetricCard title="Verified Providers" value={users.filter(u => (u.role || "").toLowerCase() === "provider").length} icon={<FaUserCheck style={{ color: rustBrown }} />} />
+              <MetricCard title="Pending Approvals" value={3} icon={<MdAdminPanelSettings style={{ color: rustBrown }} />} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <UsersCardHome users={users} loading={loadingUsers} />
+              <BookingsCard bookings={bookings.slice(0, 5)} loading={loadingBookings} />
             </div>
           </>
         )}
 
-        {activeTab === "users" && <UsersPanel users={users} setUsers={setUsers} />}
-        {activeTab === "services" && <ServicesPanel services={services} setServices={setServices} />}
+        {activeTab === "users" && (
+          <UsersCardFull users={users} loading={loadingUsers} setUsers={setUsers} />
+        )}
+
+        {activeTab === "services" && (
+          <ServicesCardFull services={services} setServices={setServices} />
+        )}
       </main>
     </div>
   );
@@ -132,9 +169,9 @@ function UsersCardHome({ users, loading }) {
               <p className="text-sm text-black/70">{u.email}</p>
             </div>
             <div className="flex items-center gap-2">
-              {u.role.toLowerCase() === "admin" && <MdAdminPanelSettings className="w-5 h-5" style={{ color: rustBrown }} />}
-              {u.role.toLowerCase() === "provider" && <FaUserTie className="w-5 h-5" style={{ color: rustBrown }} />}
-              {u.role.toLowerCase() === "customer" && <FiUsers className="w-5 h-5" style={{ color: rustBrown }} />}
+              {(u.role || "").toLowerCase() === "admin" && <MdAdminPanelSettings className="w-5 h-5" style={{ color: rustBrown }} />}
+              {(u.role || "").toLowerCase() === "provider" && <FaUserTie className="w-5 h-5" style={{ color: rustBrown }} />}
+              {(u.role || "").toLowerCase() === "customer" && <FiUsers className="w-5 h-5" style={{ color: rustBrown }} />}
               <span className="px-3 py-1 text-sm border rounded-full" style={{ borderColor: rustBrown + "40" }}>{u.role}</span>
             </div>
           </div>
@@ -143,6 +180,44 @@ function UsersCardHome({ users, loading }) {
     </div>
   );
 }
+
+// Bookings Card
+function BookingsCard({ bookings, loading }) {
+  if (loading) return <div className="bg-white border rounded-lg p-4" style={{ borderColor: rustBrown + "40" }}>Loading bookings...</div>;
+
+  const getStatusBadge = status => {
+    switch(status.toLowerCase()) {
+      case "completed": return <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full"><AiOutlineCheckCircle /> {status}</span>;
+      case "pending": return <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full"><FiClock /> {status}</span>;
+      case "cancelled": return <span className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full"><FiXCircle /> {status}</span>;
+      default:
+        return <span className="flex items-center gap-1 px-2 py-1 text-xs bg-black text-white rounded-full">{status}</span>;
+    }
+  };
+
+  return (
+    <div className="bg-white border rounded-xl p-6" style={{ borderColor: rustBrown + "40" }}>
+      <h2 className="text-xl font-semibold mb-3 flex items-center gap-2" style={{ color: rustBrown }}>
+        <BiClipboard /> Recent Bookings
+      </h2>
+      <div className="divide-y divide-black/10">
+        {bookings.map((b) => (
+          <div key={b.id} className="flex justify-between py-3 px-2 hover:bg-[rgba(183,65,14,0.1)] rounded-lg transition">
+            <div>
+              <p className="font-medium">{b.customer?.name}</p>
+              <p className="text-sm text-black/70">{b.service?.category} - {b.service?.subcategory}</p>
+            </div>
+            <div>{getStatusBadge(b.status)}
+              <h> ₹{b.service?.price}</h>
+            </div>
+            
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 // Users Full
 function UsersCardFull({ users, loading, setUsers }) {
@@ -183,9 +258,9 @@ function UserCard({ user, users, setUsers }) {
   const [editData, setEditData] = useState({ ...user });
 
   const roleIcon =
-    user.role.toLowerCase() === "admin" ? (
+    (user.role || "").toLowerCase() === "admin" ? (
       <MdAdminPanelSettings className="w-6 h-6 text-white" />
-    ) : user.role.toLowerCase() === "provider" ? (
+    ) : (user.role || "").toLowerCase() === "provider" ? (
       <FaUserTie className="w-6 h-6 text-white" />
     ) : (
       <FiUsers className="w-6 h-6 text-white" />
@@ -299,10 +374,10 @@ function ServiceCard({ service, services, setServices }) {
   const [editData, setEditData] = useState({ ...service });
 
   const icon =
-    service.category.toLowerCase() === "carpentry" ? <GiHammerNails className="text-white" /> :
-    service.category.toLowerCase() === "electrical" ? <GiElectric className="text-white" /> :
-    service.category.toLowerCase() === "cleaning" ? <GiBroom className="text-white" /> : <GiHammerNails className="text-white" />;
-
+  (service.category || "").toLowerCase() === "carpentry" ? <GiHammerNails className="text-white" /> :
+    (service.category || "").toLowerCase() === "electrical" ? <GiElectric className="text-white" /> :
+    (service.category || "").toLowerCase() === "cleaning" ? <GiBroom className="text-white" /> :
+    <GiHammerNails className="text-white" />;
   const handleSave = async () => {
     try {
       await updateService(service.id, editData);
@@ -393,39 +468,5 @@ function ServiceCard({ service, services, setServices }) {
   </div>
 )}
 </>
-  );
-}
-
-// Bookings
-function BookingsCard({ bookings, loading }) {
-  if (loading) return <div className="bg-white border rounded-lg p-4" style={{ borderColor: rustBrown + "40" }}>Loading bookings...</div>;
-
-  const getStatusBadge = status => {
-    switch(status.toLowerCase()) {
-      case "completed": return <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full"><AiOutlineCheckCircle /> {status}</span>;
-      case "pending": return <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full"><FiClock /> {status}</span>;
-      case "cancelled": return <span className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full"><FiXCircle /> {status}</span>;
-      default:
-        return <span className="flex items-center gap-1 px-2 py-1 text-xs bg-black text-white rounded-full">{status}</span>;
-    }
-  };
-
-  return (
-    <div className="bg-white border rounded-xl p-6" style={{ borderColor: rustBrown + "40" }}>
-      <h2 className="text-xl font-semibold mb-3 flex items-center gap-2" style={{ color: rustBrown }}>
-        <BiClipboard /> Recent Bookings
-      </h2>
-      <div className="divide-y divide-black/10">
-        {bookings.map((b) => (
-          <div key={b.id} className="flex justify-between py-3 px-2 hover:bg-[rgba(183,65,14,0.1)] rounded-lg transition">
-            <div>
-              <p className="font-medium">{b.user}</p>
-              <p className="text-sm text-black/70">{b.service}</p>
-            </div>
-            <div>{getStatusBadge(b.status)}</div>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

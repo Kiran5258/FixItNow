@@ -38,4 +38,9 @@ public class BookingService {
         booking.setStatus(status);
         return bookingRepository.save(booking);
     }
+
+    public List<Booking> getAllBookings() {
+    return bookingRepository.findAll();
+}
+
 }

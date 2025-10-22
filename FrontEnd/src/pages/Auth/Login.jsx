@@ -8,8 +8,8 @@ import {
   HiLogin,
 } from "react-icons/hi";
 import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from "react-icons/fa";
-import { userContext } from "../../content/Userprovider";
-import { login } from "../../services/api";
+import { userContext } from "../../content/UserProvider";
+import { login } from "../../services/api"; // ✅ import API
 import { validateEmail } from "../../utils/helper";
 
 export default function Login() {
