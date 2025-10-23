@@ -82,7 +82,6 @@ public class UserController {
         return ResponseEntity.ok("User deleted successfully");
     }
 
-<<<<<<< HEAD
     // Find user by username
 @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('PROVIDER')")
 @GetMapping("/username/{username}")
@@ -98,7 +97,5 @@ public ResponseEntity<User> getUserByUsername(@PathVariable String username, Aut
 }
 
 
-=======
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
     
 }

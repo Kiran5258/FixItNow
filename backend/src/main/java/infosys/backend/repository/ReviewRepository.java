@@ -7,18 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-<<<<<<< HEAD
-=======
-import org.springframework.stereotype.Repository;
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-<<<<<<< HEAD
-=======
-@Repository
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     // ✅ Find all reviews for a specific provider
@@ -38,7 +30,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.service.id = :serviceId")
     Double findAverageRatingByServiceId(@Param("serviceId") Long serviceId);
 
-<<<<<<< HEAD
      @Modifying
     @Transactional
     @Query("DELETE FROM Review r WHERE r.service.id = :serviceId")
@@ -53,23 +44,4 @@ void deleteByCustomerId(@Param("userId") Long userId);
 @Query("DELETE FROM Review r WHERE r.provider.id = :userId")
 void deleteByProviderId(@Param("userId") Long userId);
 
-=======
-    // ✅ Delete all reviews for a specific service
-    @Modifying
-    @Transactional
-    @Query("DELETE FROM Review r WHERE r.service.id = :serviceId")
-    void deleteByServiceId(@Param("serviceId") Long serviceId);
-
-    // ✅ Delete all reviews written by a specific customer
-    @Modifying
-    @Transactional
-    @Query("DELETE FROM Review r WHERE r.customer.id = :userId")
-    void deleteByCustomerId(@Param("userId") Long userId);
-
-    // ✅ Delete all reviews for services owned by a specific provider
-    @Modifying
-    @Transactional
-    @Query("DELETE FROM Review r WHERE r.provider.id = :userId")
-    void deleteByProviderId(@Param("userId") Long userId);
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 }

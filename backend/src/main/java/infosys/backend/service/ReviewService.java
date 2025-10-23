@@ -1,5 +1,4 @@
 package infosys.backend.service;
-<<<<<<< HEAD
 
 import infosys.backend.dto.ReviewResponseDTO;
 import infosys.backend.model.Review;
@@ -15,16 +14,6 @@ import org.springframework.security.core.Authentication;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-=======
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import infosys.backend.model.Review;
-import infosys.backend.model.User;
-import infosys.backend.repository.ReviewRepository;
-
-import java.util.List;
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 
 @Service
 public class ReviewService {
@@ -32,7 +21,6 @@ public class ReviewService {
     @Autowired
     private ReviewRepository reviewRepository;
 
-<<<<<<< HEAD
     @Autowired
     private UserRepository userRepository;
 
@@ -60,19 +48,10 @@ public class ReviewService {
     /**
      * ✅ Get all reviews written for a specific provider
      */
-=======
-    // Add a review
-    public Review addReview(Review review) {
-        return reviewRepository.save(review);
-    }
-
-    // Get reviews for a provider
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
     public List<Review> getReviewsByProvider(User provider) {
         return reviewRepository.findByProvider(provider);
     }
 
-<<<<<<< HEAD
     /**
      * ✅ Get all reviews written by a specific customer
      */
@@ -182,12 +161,4 @@ public class ReviewService {
 
     
 
-=======
-    // Get average rating for a provider
-    public double getAverageRating(User provider) {
-        List<Review> reviews = reviewRepository.findByProvider(provider);
-        if (reviews.isEmpty()) return 0.0;
-        return reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
-    }
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 }
