@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
@@ -43,5 +44,8 @@ void deleteByCustomerId(@Param("userId") Long userId);
 @Modifying
 @Query("DELETE FROM Review r WHERE r.provider.id = :userId")
 void deleteByProviderId(@Param("userId") Long userId);
+
+Optional<Review> findByBookingId(Long bookingId);
+    boolean existsByBookingId(Long bookingId);
 
 }

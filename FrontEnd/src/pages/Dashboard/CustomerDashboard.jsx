@@ -716,34 +716,60 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId }) {
 
 
 // Bookings Card for CustomerDashboard
-// Bookings Card for CustomerDashboard
 function BookingsTab({ bookings, setBookings }) {
   const navigate = useNavigate();
-  const handleCustomerVerify = async (bookingId) => {
-    try {
-      // Call the API to mark booking as completed
-      await verifyBookingByCustomer(bookingId);
+  const [reviewsMap, setReviewsMap] = useState({});
 
-      // Update UI state locally
-      setBookings((prev) =>
-        prev.map((b) =>
-          b.id === bookingId ? { ...b, status: "completed" } : b
-        )
-      );
-
-      alert("Booking marked as completed!");
-    } catch (err) {
-      console.error("Failed to verify booking:", err);
-      alert("Failed to verify booking.");
-    }
+  // Fetch reviews only for completed bookings
+  useEffect(() => {
+  const fetchReviews = async () => {
+    const map = {};
+    await Promise.all(
+      bookings
+        .filter(b => b.status?.toLowerCase() === "completed")
+        .map(async (b) => {
+          try {
+            const res = await getReviewByBookingId(b.id);
+            // If res.data exists and has length > 0, mark as true
+            map[b.id] = res.data && res.data.length > 0; 
+          } catch (err) {
+            console.error(`Failed to fetch review for booking ${b.id}`, err);
+            map[b.id] = false; // default to false if error
+          }
+        })
+    );
+    setReviewsMap(map);
   };
+
+  if (bookings.length > 0) fetchReviews();
+}, [bookings]);
+
+  
+
+  const handleCustomerVerify = async (bookingId) => {
+  try {
+    await verifyBookingByCustomer(bookingId);
+
+    // Update booking status
+    setBookings(prev =>
+      prev.map(b =>
+        b.id === bookingId ? { ...b, status: "completed" } : b
+      )
+    );
+
+    // Mark review as "not yet exists" explicitly
+    setReviewsMap(prev => ({ ...prev, [bookingId]: false }));
+
+    alert("Booking marked as completed!");
+  } catch (err) {
+    console.error("Failed to verify booking:", err);
+    alert("Failed to verify booking.");
+  }
+};
 
   const handleLeaveReview = (booking) => {
     navigate(`/provider/${booking.provider.id}`, {
-      state: {
-        bookingId: booking.id,
-        serviceId: booking.service.id, // pre-select the booked service
-      },
+      state: { bookingId: booking.id, serviceId: booking.service.id },
     });
   };
 
@@ -791,7 +817,7 @@ function BookingsTab({ bookings, setBookings }) {
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {bookings.map((b) => (
+        {bookings.map(b => (
           <div
             key={b.id}
             className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
@@ -806,9 +832,7 @@ function BookingsTab({ bookings, setBookings }) {
           >
             <div className="flex col items-center gap-3">
               <FiUser />
-              <h3 className="font-semibold text-lg">
-                {b.provider?.name || "Unknown"}
-              </h3>
+              <h3 className="font-semibold text-lg">{b.provider?.name || "Unknown"}</h3>
               {getStatusBadge(b)}
             </div>
 
@@ -820,7 +844,6 @@ function BookingsTab({ bookings, setBookings }) {
               <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
             </p>
 
-            {/* Show "Verify & Complete" button if provider marked complete */}
             {b.providerMarkedComplete && b.status?.toLowerCase() === "confirmed" && (
               <button
                 onClick={() => handleCustomerVerify(b.id)}
@@ -829,7 +852,8 @@ function BookingsTab({ bookings, setBookings }) {
                 Verify & Complete
               </button>
             )}
-            {b.status?.toLowerCase() === "completed" && (
+
+            {b.status?.toLowerCase() === "completed" && reviewsMap[b.id] === false && (
   <button
     onClick={() => handleLeaveReview(b)}
     className="px-4 py-2 bg-[#6e290c] text-white rounded-lg hover:bg-[#a44a1d] transition"
@@ -839,13 +863,13 @@ function BookingsTab({ bookings, setBookings }) {
 )}
 
 
-
           </div>
         ))}
       </div>
     </div>
   );
 }
+
 
 
 
