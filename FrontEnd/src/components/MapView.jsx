@@ -159,4 +159,8 @@ export default function MapView({ services, hoveredServiceId, center }) {
       />
     </MapContainer>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84

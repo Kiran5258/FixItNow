@@ -1,5 +1,6 @@
 package infosys.backend.controller;
 
+<<<<<<< HEAD
 import infosys.backend.dto.ReviewReplyRequest;
 import infosys.backend.dto.ReviewResponseDTO;
 import infosys.backend.model.Review;
@@ -12,10 +13,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+=======
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import infosys.backend.model.Review;
+import infosys.backend.model.User;
+import infosys.backend.service.ReviewService;
+import infosys.backend.service.UserService;
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 
 import java.util.List;
 
 @RestController
+<<<<<<< HEAD
 @RequestMapping("/api/reviews")
 @RequiredArgsConstructor
 public class ReviewController {
@@ -115,3 +127,43 @@ public ResponseEntity<ReviewResponseDTO> addReply(
 
 
 }
+=======
+@RequestMapping("/reviews")
+public class ReviewController {
+
+    @Autowired
+    private ReviewService reviewService;
+
+    @Autowired
+    private UserService userService;
+
+    // Add a new review
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @PostMapping("/add")
+    public Review addReview(@RequestBody Review review) {
+        return reviewService.addReview(review);
+    }
+
+    // Get reviews for a provider
+    @PreAuthorize("hasAnyRole('CUSTOMER','PROVIDER','ADMIN')")
+    @GetMapping("/provider/{providerId}")
+    public List<Review> getProviderReviews(@PathVariable Long providerId) {
+        User provider = userService.getUserById(providerId);
+        if (provider == null) {                          // ✅ Added null check
+            throw new RuntimeException("Provider not found");
+        }
+        return reviewService.getReviewsByProvider(provider);
+    }
+
+    // Get average rating for a provider
+    @PreAuthorize("hasAnyRole('CUSTOMER','PROVIDER','ADMIN')")
+    @GetMapping("/provider/{providerId}/average")
+    public Double getProviderAverageRating(@PathVariable Long providerId) { // ✅ Changed 'double' → 'Double'
+        User provider = userService.getUserById(providerId);
+        if (provider == null) {                          // ✅ Added null check
+            throw new RuntimeException("Provider not found");
+        }
+        return reviewService.getAverageRating(provider);
+    }
+}
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84

@@ -15,7 +15,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+<<<<<<< HEAD
 @ToString(exclude = "provider")
+=======
+@ToString(exclude = "provider") // Exclude provider to prevent recursive toString()
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 public class ServiceProvider {
 
     @Id
@@ -25,11 +29,17 @@ public class ServiceProvider {
     // Provider offering the service
     @ManyToOne
     @JoinColumn(name = "provider_id", referencedColumnName = "id", nullable = false)
+<<<<<<< HEAD
     @JsonBackReference
     private User provider;
 
     
 
+=======
+    @JsonBackReference // Avoid infinite recursion with User.services
+    private User provider;
+
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
     @Column(nullable = false)
     private String category; // e.g., Electrician, Plumber
 
@@ -38,8 +48,13 @@ public class ServiceProvider {
     @Column(columnDefinition = "TEXT")
     private String description; // Detailed service description
 
+<<<<<<< HEAD
     @Column(nullable = false)
     private BigDecimal price; // Service price (better precision than Double)
+=======
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price; // Use precision and scale for accurate money representation
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 
     private String availability; // Could be JSON string or formatted text
 
@@ -48,6 +63,9 @@ public class ServiceProvider {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // Auto-generated timestamp
+<<<<<<< HEAD
 
     
+=======
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 }

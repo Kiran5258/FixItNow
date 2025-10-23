@@ -71,10 +71,13 @@ public class UserService {
     userRepository.deleteById(id);
     }
 
+<<<<<<< HEAD
     public User findByUsername(String username) {
     return userRepository.findByName(username)
             .orElseThrow(() -> new RuntimeException("User not found"));
 }
 
 
+=======
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 }

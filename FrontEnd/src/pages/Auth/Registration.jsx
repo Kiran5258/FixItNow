@@ -10,8 +10,17 @@ import {
 } from "react-icons/hi";
 import { FaHome, FaWrench } from "react-icons/fa";
 import { register } from "../../services/api";
+<<<<<<< HEAD
 
 export default function Registration() {
+=======
+import toast from "react-hot-toast";
+
+export default function Registration() {
+  const navigate = useNavigate();
+
+  // User fields
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   const [fullname, setFullname] = useState("");
   const [location, setLocation] = useState("");
   const [latitude, setLatitude] = useState(null);
@@ -30,8 +39,11 @@ export default function Registration() {
   const [price, setPrice] = useState("");
   const [availability, setAvailability] = useState("");
 
+<<<<<<< HEAD
   const navigate = useNavigate();
 
+=======
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   // 🌍 Get coordinates from location string
   const getCoordinatesFromLocation = async (loc) => {
     try {
@@ -82,7 +94,11 @@ export default function Registration() {
         }
       );
     } else {
+<<<<<<< HEAD
       alert("Geolocation not supported by your browser.");
+=======
+      toast.error("Geolocation not supported by your browser.");
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
     }
   };
 
@@ -92,6 +108,10 @@ export default function Registration() {
     setError("");
     setLoading(true);
 
+<<<<<<< HEAD
+=======
+    // Basic validations
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
     if (!fullname || !email || !password || !location) {
       setError("Please fill all required fields");
       setLoading(false);
@@ -124,7 +144,11 @@ export default function Registration() {
       subcategory,
       description,
       price: role === "PROVIDER" ? parseFloat(price) : undefined,
+<<<<<<< HEAD
       availability,
+=======
+      availability: role === "PROVIDER" ? availability : undefined,
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
     };
 
     try {
@@ -299,7 +323,11 @@ export default function Registration() {
 
               <input
                 type="text"
+<<<<<<< HEAD
                 placeholder="Availability (e.g., Mon - Fri 9.00am-5.00pm)"
+=======
+                placeholder="Availability (e.g., Mon-Fri 9:00-18:00)"
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
                 value={availability}
                 onChange={(e) => setAvailability(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -307,8 +335,15 @@ export default function Registration() {
             </>
           )}
 
+<<<<<<< HEAD
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
+=======
+          {/* Error message */}
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+
+          {/* Submit button */}
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
           <button
             type="submit"
             disabled={loading}
@@ -318,6 +353,10 @@ export default function Registration() {
           </button>
         </form>
 
+<<<<<<< HEAD
+=======
+        {/* Login link */}
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
         <p className="text-white text-sm mt-6">
           Already have an account? <Link to="/login" className="underline font-medium">Log In</Link>
         </p>

@@ -8,8 +8,14 @@ import {
   HiLogin,
 } from "react-icons/hi";
 import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from "react-icons/fa";
+<<<<<<< HEAD
 import { userContext } from "../../content/UserProvider";
 import { login } from "../../services/api"; // ✅ import API
+=======
+import { userContext } from "../../content/Userprovider";
+import { login } from "../../services/api";
+import { validateEmail } from "../../utils/helper";
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -24,7 +30,11 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
+<<<<<<< HEAD
     if (!email || !password) {
+=======
+    if (!validateEmail(email) || !password) {
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
       setError("Please fill in all fields");
       return;
     }
@@ -53,7 +63,11 @@ export default function Login() {
       UpdateUser(loggedInUser);
 
       // ✅ Redirect logic
+<<<<<<< HEAD
       if (role === "PROVIDER" ) {
+=======
+      if (role === "PROVIDER") {
+>>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
         navigate("/provider-dashboard");
       } else if (role === "ADMIN") {
         navigate("/admin-dashboard");
