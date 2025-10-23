@@ -65,6 +65,10 @@ export const updateBookingStatus = (bookingId, status) =>
   API.put(`/bookings/updateStatus/${bookingId}?status=${status}`);
 // ADMIN: Get all bookings
 export const getAllBookings = () => API.get("/bookings/all");
+export const markBookingCompleteByProvider = (bookingId) =>
+  API.post(`/bookings/${bookingId}/markComplete`);
+export const verifyBookingByCustomer = (bookingId) =>
+  API.post(`/bookings/${bookingId}/verify`);
 
 
 

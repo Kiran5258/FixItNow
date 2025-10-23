@@ -40,5 +40,8 @@ public class Booking {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    private Boolean providerMarkedComplete = false; // provider marks completed
+    private Boolean customerVerified = false; 
+
     
 }

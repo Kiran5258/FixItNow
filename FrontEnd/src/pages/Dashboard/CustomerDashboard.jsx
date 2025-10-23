@@ -10,11 +10,13 @@ import {
   FiUser,
   FiMapPin,
   FiCalendar, FiClock,
+   FiXCircle,
   
 } from "react-icons/fi";
 import { MdMiscellaneousServices } from "react-icons/md";
 import { BiHistory } from "react-icons/bi";
 import { AiOutlineCheckCircle } from "react-icons/ai";
+import { BiClipboard } from "react-icons/bi";
 import {
   getAllServices,
   getMyProfile,
@@ -23,7 +25,9 @@ import {
   addReview, 
   getReviewsByProvider, 
   getProviderAverageRating,
-  updateUser 
+  updateUser ,
+  verifyBookingByCustomer,
+  
 } from "../../services/api";
 import MapView from "../../components/MapView";
 import { FaSitemap } from "react-icons/fa";
@@ -159,15 +163,19 @@ const [averageRating, setAverageRating] = useState(0);
 
 const openReviewModal = (service) => {
   setReviewService(service);
+  setBookingForReview(booking);
   fetchReviews(service.providerId || service.id);
   setIsReviewModalOpen(true);
 };
+
+ 
 
 const handleSubmitReview = async () => {
   if (!newReview.comment) return alert("Please write a comment.");
   
   try {
     await addReview({
+      booking: { id: bookingId || null },
       customer: { id: customer.id },
       provider: { id: reviewService.providerId || reviewService.id },
       service: { id: reviewService.id },
@@ -456,7 +464,7 @@ const handleCancelProfile = () => {
           )}
 
           {/* BOOKINGS TAB */}
-          {activeTab === "bookings" && <BookingsTab bookings={bookings} />}
+          {activeTab === "bookings" && <BookingsTab bookings={bookings} setBookings={setBookings} />}
 
           {/* PROFILE TAB */}
           {activeTab === "profile" && customer && (
@@ -707,97 +715,138 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId }) {
 }
 
 
-function BookingsTab({ bookings }) {
-  if (!bookings || bookings.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full py-20">
-        <h2 className="text-2xl font-bold text-blue-700 mb-2">My Bookings</h2>
-        <p className="text-gray-500 text-lg">You have no bookings yet.</p>
-      </div>
-    );
-  }
+// Bookings Card for CustomerDashboard
+// Bookings Card for CustomerDashboard
+function BookingsTab({ bookings, setBookings }) {
+  const navigate = useNavigate();
+  const handleCustomerVerify = async (bookingId) => {
+    try {
+      // Call the API to mark booking as completed
+      await verifyBookingByCustomer(bookingId);
 
-  // ✅ Define clean color mapping for statuses
-  const statusColors = {
-    completed: "bg-green-100 text-green-800 border border-green-300",
-    confirmed: "bg-green-100 text-green-800 border border-green-300",
-    pending: "bg-yellow-100 text-yellow-800 border border-yellow-300",
-    cancelled: "bg-red-100 text-red-800 border border-red-300",
+      // Update UI state locally
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === bookingId ? { ...b, status: "completed" } : b
+        )
+      );
+
+      alert("Booking marked as completed!");
+    } catch (err) {
+      console.error("Failed to verify booking:", err);
+      alert("Failed to verify booking.");
+    }
   };
 
+  const handleLeaveReview = (booking) => {
+    navigate(`/provider/${booking.provider.id}`, {
+      state: {
+        bookingId: booking.id,
+        serviceId: booking.service.id, // pre-select the booked service
+      },
+    });
+  };
+
+  const getStatusBadge = (b) => {
+    if (b.providerMarkedComplete && b.status?.toLowerCase() === "confirmed") {
+      return (
+        <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full font-semibold">
+          Waiting for verification
+        </span>
+      );
+    }
+
+    switch (b.status?.toLowerCase()) {
+      case "completed":
+        return (
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full font-semibold">
+            <AiOutlineCheckCircle /> {b.status}
+          </span>
+        );
+      case "pending":
+        return (
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full font-semibold">
+            <FiClock /> {b.status}
+          </span>
+        );
+      case "cancelled":
+        return (
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full font-semibold">
+            <FiXCircle /> {b.status}
+          </span>
+        );
+      default:
+        return <span className="px-2 py-1 bg-gray-100 rounded-full">{b.status}</span>;
+    }
+  };
+
+  if (!bookings || bookings.length === 0) {
+    return <p className="text-black/70 mt-4">No bookings available.</p>;
+  }
+
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6 text-blue-700">My Bookings</h2>
+    <div className="mt-6">
+      <h2 className="text-2xl font-bold mb-4 flex items-center gap-2" style={{ color: "#6e290c" }}>
+        <BiClipboard /> My Bookings
+      </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {bookings.map((b) => {
-          const bookingDate = new Date(b.bookingDate);
-          const today = new Date();
-          const isPast = bookingDate < today;
-          const cardBg = isPast ? "bg-gray-50" : "bg-white";
-
-          // Normalize status (lowercase for safety)
-          const status = b.status?.toLowerCase();
-
-          // Border color based on status
-          const borderColor =
-            status === "completed" || status === "confirmed"
-              ? "border-green-400"
-              : status === "pending"
-              ? "border-yellow-400"
-              : "border-red-400";
-
-          return (
-            <div
-              key={b.id}
-              className={`${cardBg} rounded-2xl shadow-lg p-5 hover:shadow-2xl transition flex flex-col justify-between border-t-4 ${borderColor}`}
-            >
-              {/* Booking details */}
-              <div className="mb-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
-                  {b.service?.subcategory || "Service Name"}
-                </h3>
-
-                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                  <FiUser className="text-blue-600" /> Provider:{" "}
-                  {b.provider?.name || "Unknown"}
-                </p>
-
-                <p className="text-sm text-gray-600 mb-1 flex items-start gap-1">
-                  
-                  {b.service?.location || "Location N/A"}
-                </p>
-
-                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                  <FiCalendar className="text-green-600" /> {b.bookingDate}
-                </p>
-
-                <p className="text-sm text-gray-600 flex items-center gap-1">
-                  <FiClock className="text-purple-600" /> {b.timeSlot}
-                </p>
-              </div>
-
-              {/* Footer section */}
-              <div className="flex justify-between items-center mt-3">
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-semibold shadow-sm ${
-                    statusColors[status] || "bg-gray-100 text-gray-800 border"
-                  }`}
-                >
-                  {b.status?.toUpperCase()}
-                </span>
-
-                <span className="text-blue-600 font-semibold text-lg">
-                  ₹{b.service?.price}
-                </span>
-              </div>
+        {bookings.map((b) => (
+          <div
+            key={b.id}
+            className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
+            style={{
+              borderColor:
+                b.status?.toLowerCase() === "pending"
+                  ? "#facc15"
+                  : b.status?.toLowerCase() === "completed"
+                  ? "#16a34a"
+                  : "#dc2626",
+            }}
+          >
+            <div className="flex col items-center gap-3">
+              <FiUser />
+              <h3 className="font-semibold text-lg">
+                {b.provider?.name || "Unknown"}
+              </h3>
+              {getStatusBadge(b)}
             </div>
-          );
-        })}
+
+            <p className="text-sm text-gray-700">
+              <span className="font-semibold">{b.service?.category}</span> - {b.service?.subcategory}
+            </p>
+            <p className="text-sm text-gray-600">{b.service?.description}</p>
+            <p className="text-sm text-gray-600">
+              <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
+            </p>
+
+            {/* Show "Verify & Complete" button if provider marked complete */}
+            {b.providerMarkedComplete && b.status?.toLowerCase() === "confirmed" && (
+              <button
+                onClick={() => handleCustomerVerify(b.id)}
+                className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Verify & Complete
+              </button>
+            )}
+            {b.status?.toLowerCase() === "completed" && (
+  <button
+    onClick={() => handleLeaveReview(b)}
+    className="px-4 py-2 bg-[#6e290c] text-white rounded-lg hover:bg-[#a44a1d] transition"
+  >
+    Leave a Review
+  </button>
+)}
+
+
+
+          </div>
+        ))}
       </div>
     </div>
   );
 }
+
 
 
 

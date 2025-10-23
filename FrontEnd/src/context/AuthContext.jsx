@@ -19,20 +19,24 @@ export const AuthProvider = ({ children }) => {
 
   // Load user profile on mount if token exists
   useEffect(() => {
-    const loadUser = async () => {
-      if (token) {
-        try {
-          const res = await getMyProfile(); // backend: /api/users/me
-          setUser(res.data);
-        } catch (err) {
-          console.error("Token expired or invalid:", err);
-          handleLogout();
-        }
+  const loadUser = async () => {
+    if (token) {
+      try {
+        const res = await getMyProfile();
+        setUser(res.data);
+      } catch (err) {
+        console.error("Token expired or invalid:", err);
+        handleLogout();
+      } finally {
+        setLoading(false); // ✅ run only after profile attempt finishes
       }
-      setLoading(false);
-    };
-    loadUser();
-  }, [token]);
+    } else {
+      setLoading(false); // ✅ only when no token
+    }
+  };
+  loadUser();
+}, [token]);
+
 
   // 🔑 Login
   const handleLogin = async (credentials) => {

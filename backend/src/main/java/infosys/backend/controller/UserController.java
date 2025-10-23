@@ -1,5 +1,6 @@
 package infosys.backend.controller;
 
+import infosys.backend.enums.Role;
 import infosys.backend.model.User;
 import infosys.backend.repository.UserRepository;
 import infosys.backend.service.UserService;
@@ -97,5 +98,17 @@ public ResponseEntity<User> getUserByUsername(@PathVariable String username, Aut
 }
 
 
-    
+@GetMapping("/{id}/roles")
+@PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('PROVIDER')")
+public ResponseEntity<String> getRoles(@PathVariable Long id, Authentication auth) {
+    User currentUser = (User) auth.getPrincipal();
+
+    if (currentUser.getRole() != Role.ADMIN && !currentUser.getId().equals(id)) {
+        return ResponseEntity.status(403).build();
+    }
+
+    User user = userService.getUserById(id);
+    return ResponseEntity.ok(user.getRole().name());
+}
+
 }

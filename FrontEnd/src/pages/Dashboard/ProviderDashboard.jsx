@@ -17,7 +17,8 @@ import {
   updateBookingStatus,
   getProviderAverageRating,
   getReviewsByProvider,
-  deleteReview
+  deleteReview,
+  markBookingCompleteByProvider,
   
 } from "../../services/api";
 import { Md18UpRating, MdReviews } from "react-icons/md";
@@ -540,7 +541,8 @@ function RecentActivity({ bookings }) {
   );
 }
 
-// Bookings Card
+
+
 function BookingsCard({ bookings, setBookings }) {
 
   const getStatusBadge = (status) => {
@@ -563,6 +565,12 @@ function BookingsCard({ bookings, setBookings }) {
             <FiXCircle /> {status}
           </span>
         );
+      case "confirmed":
+        return (
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-semibold">
+            {status}
+          </span>
+        );
       default:
         return <span className="px-2 py-1 bg-gray-100 rounded-full">{status}</span>;
     }
@@ -570,10 +578,7 @@ function BookingsCard({ bookings, setBookings }) {
 
   const handleStatusUpdate = async (bookingId, newStatus) => {
     try {
-      // Call backend endpoint
       await updateBookingStatus(bookingId, newStatus);
-
-      // Update UI state immediately
       setBookings(bookings.map(b =>
         b.id === bookingId ? { ...b, status: newStatus } : b
       ));
@@ -582,6 +587,20 @@ function BookingsCard({ bookings, setBookings }) {
       alert("Failed to update booking status.");
     }
   };
+
+  const handleMarkComplete = async (bookingId) => {
+  try {
+    await markBookingCompleteByProvider(bookingId); // backend can just set providerMarkedComplete = true
+    setBookings(bookings.map(b =>
+      b.id === bookingId ? { ...b, providerMarkedComplete: true } : b
+    ));
+    alert("Marked as completed. Waiting for customer verification.");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to mark booking as complete.");
+  }
+};
+
 
   if (!bookings || bookings.length === 0) {
     return <p className="text-black/70 mt-4">No bookings available.</p>;
@@ -594,58 +613,103 @@ function BookingsCard({ bookings, setBookings }) {
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {bookings.map((b) => (
-          <div
-            key={b.id}
-            className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
-            style={{
-              borderColor:
-                b.status?.toLowerCase() === "pending"
-                  ? "#facc15"
-                  : b.status?.toLowerCase() === "completed"
-                  ? "#16a34a"
-                  : "#dc2626",
-            }}
-          >
-            <div className="flex col items-center gap-3">
-              <FiUser/>
-              <h3 className="font-semibold text-lg">
-                
-                {b.customer?.name || b.customer?.username || "Unknown"}
-              </h3>
-              {getStatusBadge(b.status)}
-            </div>
+        {bookings.map((b) => {
+          const now = new Date();
 
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">{b.service?.category}</span> - {b.service?.subcategory}
-            </p>
-            <p className="text-sm text-gray-600">{b.service?.description}</p>
-            <p className="text-sm text-gray-600">
-              <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
-            </p>
+  // Extract start time from timeSlot
+  const startTime = b.timeSlot.split(" - ")[0]; // "9:00 AM"
 
-            {b.status?.toLowerCase() === "pending" && (
-              <div className="flex gap-2 mt-2">
-                <button
-                  className="flex-1 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
-                  onClick={() => handleStatusUpdate(b.id, "COMPLETED")}
-                >
-                  Accept
-                </button>
-                <button
-                  className="flex-1 bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
-                  onClick={() => handleStatusUpdate(b.id, "CANCELLED")}
-                >
-                  Decline
-                </button>
+  // Combine date + start time to get booking Date object
+  const bookingDateTime = new Date(`${b.bookingDate} ${startTime}`);
+
+  // Check if "Mark as Complete" button should show
+  const showMarkCompleteBtn =
+    b.status?.toLowerCase() === "confirmed" &&
+    !b.providerMarkedComplete &&
+    bookingDateTime <= now;
+
+console.log("Booking ID:", b.id, "BookingDateTime:", bookingDateTime, "Now:", now, "ShowBtn:", showMarkCompleteBtn,b.bookingDate,b.timeSlot);
+
+
+
+          return (
+            <div
+              key={b.id}
+              className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
+              style={{
+                borderColor:
+                  b.status?.toLowerCase() === "pending"
+                    ? "#facc15"
+                    : b.status?.toLowerCase() === "completed"
+                    ? "#16a34a"
+                    : b.status?.toLowerCase() === "confirmed"
+                    ? "#3b82f6"
+                    : "#dc2626",
+              }}
+            >
+              <div className="flex col items-center gap-3">
+                <FiUser/>
+                <h3 className="font-semibold text-lg">
+                  {b.customer?.name || b.customer?.username || "Unknown"}
+                </h3>
+                {getStatusBadge(b.status)}
               </div>
-            )}
-          </div>
-        ))}
+
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">{b.service?.category}</span> - {b.service?.subcategory}
+              </p>
+              <p className="text-sm text-gray-600">{b.service?.description}</p>
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
+              </p>
+
+              {/* Pending Booking Buttons */}
+              {b.status?.toLowerCase() === "pending" && (
+                <div className="flex gap-2 mt-2">
+                  <button
+                    className="flex-1 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
+                    onClick={() => handleStatusUpdate(b.id, "CONFIRMED")}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    className="flex-1 bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
+                    onClick={() => handleStatusUpdate(b.id, "CANCELLED")}
+                  >
+                    Decline
+                  </button>
+                </div>
+              )}
+
+              {/* Confirmed Booking => Mark as Completed */}
+              {showMarkCompleteBtn && (
+                <button
+                  className="flex-1 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition mt-2"
+                  onClick={() => handleMarkComplete(b.id)}
+                >
+                  Mark as Completed
+                </button>
+              )}
+
+              {/* Waiting for customer verification */}
+              {/* Show status */}
+{/* Waiting for customer verification */}
+{b.status?.toLowerCase() === "confirmed" && b.providerMarkedComplete && (
+  <span className="flex-1 text-center bg-yellow-100 text-yellow-800 px-3 py-1 rounded-lg mt-2">
+    Waiting for customer verification
+  </span>
+)}
+
+
+
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
 
 function ProfileTab({
   provider,

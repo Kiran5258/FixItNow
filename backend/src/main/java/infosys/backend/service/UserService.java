@@ -76,5 +76,8 @@ public class UserService {
             .orElseThrow(() -> new RuntimeException("User not found"));
 }
 
-
+public String getRole(Long id) {
+        User user = getUserById(id);
+        return user.getRole().name();
+    }
 }
