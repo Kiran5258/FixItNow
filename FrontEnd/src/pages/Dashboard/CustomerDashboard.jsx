@@ -118,11 +118,15 @@ const rustBrown = "#6e290cff";
 
 export default function CustomerDashboard() {
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+
   const [activeTab, setActiveTab] = useState("home");
   const [services, setServices] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [customer, setCustomer] = useState(null);
   const [servicesWithDistance, setServicesWithDistance] = useState([]);
+  const [reviewsMap, setReviewsMap] = useState({});
+
 
   const [sortOption, setSortOption] = useState("rating");
   const [hoveredServiceId, setHoveredServiceId] = useState(null);
@@ -191,7 +195,35 @@ const handleSubmitReview = async () => {
     alert("Failed to submit review.");
   }
 };
+useEffect(() => {
+  const fetchReviewsForBookings = async () => {
+    if (!bookings?.length || !token) return;
 
+    const map = {};
+    for (const b of bookings) {
+      try {
+        const res = await fetch(
+          `http://localhost:8080/api/reviews/booking/${b.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (res.status === 200) {
+        const review = await res.json();
+        map[b.id] = review && Object.keys(review).length > 0 ? true : false;
+      } else {
+        map[b.id] = false; // no review
+      }
+      } catch (err) {
+        console.error("Error fetching review for booking", b.id, err);
+        map[b.id] = false;
+      }
+    }
+
+    setReviewsMap(map);
+  };
+
+  fetchReviewsForBookings();
+}, [bookings, token]);
 
   // --- 🚀 Fetch all data quickly and lazy-load geocodes
  useEffect(() => {
@@ -232,6 +264,9 @@ const handleSubmitReview = async () => {
           }));
         }
       }
+
+      
+
 
     const servicesWithExtra = await Promise.all(
   initialServices.map(async (s) => {
@@ -464,7 +499,7 @@ const handleCancelProfile = () => {
           )}
 
           {/* BOOKINGS TAB */}
-          {activeTab === "bookings" && <BookingsTab bookings={bookings} setBookings={setBookings} />}
+          {activeTab === "bookings" && <BookingsTab bookings={bookings} setBookings={setBookings} reviewsMap={reviewsMap}/>}
 
           {/* PROFILE TAB */}
           {activeTab === "profile" && customer && (
@@ -716,33 +751,16 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId }) {
 
 
 // Bookings Card for CustomerDashboard
-function BookingsTab({ bookings, setBookings }) {
+function BookingsTab({ bookings, setBookings ,reviewsMap}) {
   const navigate = useNavigate();
-  const [reviewsMap, setReviewsMap] = useState({});
+  const token = localStorage.getItem("token");
 
-  // Fetch reviews only for completed bookings
-  useEffect(() => {
-  const fetchReviews = async () => {
-    const map = {};
-    await Promise.all(
-      bookings
-        .filter(b => b.status?.toLowerCase() === "completed")
-        .map(async (b) => {
-          try {
-            const res = await getReviewByBookingId(b.id);
-            // If res.data exists and has length > 0, mark as true
-            map[b.id] = res.data && res.data.length > 0; 
-          } catch (err) {
-            console.error(`Failed to fetch review for booking ${b.id}`, err);
-            map[b.id] = false; // default to false if error
-          }
-        })
-    );
-    setReviewsMap(map);
-  };
+  
 
-  if (bookings.length > 0) fetchReviews();
-}, [bookings]);
+ 
+  
+
+
 
   
 
@@ -758,7 +776,7 @@ function BookingsTab({ bookings, setBookings }) {
     );
 
     // Mark review as "not yet exists" explicitly
-    setReviewsMap(prev => ({ ...prev, [bookingId]: false }));
+    
 
     alert("Booking marked as completed!");
   } catch (err) {
@@ -771,6 +789,7 @@ function BookingsTab({ bookings, setBookings }) {
     navigate(`/provider/${booking.provider.id}`, {
       state: { bookingId: booking.id, serviceId: booking.service.id },
     });
+     setReviewsMap(prev => ({ ...prev, [booking.id]: true }));
   };
 
   const getStatusBadge = (b) => {
@@ -789,6 +808,12 @@ function BookingsTab({ bookings, setBookings }) {
             <AiOutlineCheckCircle /> {b.status}
           </span>
         );
+        case "confirmed":
+      return (
+        <span className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-semibold">
+          <FiClock /> {b.status}
+        </span>
+      );
       case "pending":
         return (
           <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full font-semibold">
@@ -822,13 +847,16 @@ function BookingsTab({ bookings, setBookings }) {
             key={b.id}
             className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
             style={{
-              borderColor:
-                b.status?.toLowerCase() === "pending"
-                  ? "#facc15"
-                  : b.status?.toLowerCase() === "completed"
-                  ? "#16a34a"
-                  : "#dc2626",
-            }}
+  borderColor:
+    b.status?.toLowerCase() === "pending"
+      ? "#facc15"
+      : b.status?.toLowerCase() === "completed"
+      ? "#16a34a"
+      : b.status?.toLowerCase() === "confirmed"
+      ? "#3b82f6" // blue for confirmed
+      : "#dc2626",
+}}
+
           >
             <div className="flex col items-center gap-3">
               <FiUser />
@@ -847,13 +875,13 @@ function BookingsTab({ bookings, setBookings }) {
             {b.providerMarkedComplete && b.status?.toLowerCase() === "confirmed" && (
               <button
                 onClick={() => handleCustomerVerify(b.id)}
-                className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                className="px-6 py-2 bg-green-800 text-white rounded-lg hover:bg-green-700"
               >
                 Verify & Complete
               </button>
             )}
 
-            {b.status?.toLowerCase() === "completed" && reviewsMap[b.id] === false && (
+           {b.status?.toLowerCase() === "completed" && !reviewsMap[b.id] && (
   <button
     onClick={() => handleLeaveReview(b)}
     className="px-4 py-2 bg-[#6e290c] text-white rounded-lg hover:bg-[#a44a1d] transition"
@@ -861,6 +889,8 @@ function BookingsTab({ bookings, setBookings }) {
     Leave a Review
   </button>
 )}
+
+
 
 
           </div>
