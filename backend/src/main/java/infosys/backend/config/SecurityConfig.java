@@ -39,8 +39,13 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
             .requestMatchers("/bookings/**").authenticated()
             // Only authenticated users can see reviews
             .requestMatchers("/reviews/provider/**").authenticated()  // any logged-in user can view reviews
-            .requestMatchers("/reviews/add").authenticated()          // all user management require login
+            .requestMatchers("/reviews/add").authenticated()    
+            .requestMatchers("/api/messages/**").authenticated()  
+                // all user management require login
             // Any other endpoints require authentication
+            .requestMatchers("/ws/**").permitAll()       // allow handshake endpoints
+.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // allow preflight requests
+
             .anyRequest().authenticated()
             
         );

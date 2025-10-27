@@ -889,6 +889,15 @@ function BookingsTab({ bookings, setBookings ,reviewsMap}) {
     Leave a Review
   </button>
 )}
+{b.status?.toLowerCase() !== "cancelled" && (
+  <button
+    onClick={() => navigate(`/chat/${b.provider.id}`, { state: { provider: b.provider } })}
+    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+  >
+    Chat
+  </button>
+)}
+
 
 
 

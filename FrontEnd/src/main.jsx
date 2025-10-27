@@ -5,7 +5,7 @@ import "./index.css";
 import "leaflet/dist/leaflet.css";
 
 import App from "./App.jsx";
-import UserProvider from "./content/UserProvider.jsx";
+import UserProvider from "../content/UserProvider.jsx";
 
 
 createRoot(document.getElementById("root")).render(
