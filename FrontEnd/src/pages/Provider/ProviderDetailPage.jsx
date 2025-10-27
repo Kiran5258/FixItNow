@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate ,useLocation} from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
 import {
   getAllServices,
@@ -12,6 +12,7 @@ import { useAuth } from "../../context/AuthContext";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// Parse availability string like "Mon-Fri 9am-5pm"
 function parseAvailability(availStr) {
   const dayTimeRegex =
     /^(\w+)\s*-\s*(\w+)\s+(\d{1,2}\.?\d*)\s*(am|pm)\s*-\s*(\d{1,2}\.?\d*)\s*(am|pm)$/i;
@@ -39,7 +40,7 @@ function parseAvailability(availStr) {
     const formatHour = (hour) => {
       const suffix = hour >= 12 ? "PM" : "AM";
       const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-      return displayHour + ":00 " + suffix;
+      return `${displayHour}:00 ${suffix}`;
     };
     slots.push(`${formatHour(h)} - ${formatHour(nextH)}`);
   }
@@ -47,298 +48,6 @@ function parseAvailability(availStr) {
   return { days: availableDays, slots };
 }
 
-export default function ProviderDetailPage() {
-  const { id } = useParams();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
-  const [providerServices, setProviderServices] = useState([]);
-  const [selectedService, setSelectedService] = useState(null);
-  const [reviews, setReviews] = useState([]);
-  const [averageRating, setAverageRating] = useState(0);
-  const [activeTab, setActiveTab] = useState("services");
-  const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
-  const [bookingService, setBookingService] = useState(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const allServices = await getAllServices();
-        const services = allServices.data.filter(
-          (s) => s.providerId === parseInt(id)
-        );
-        setProviderServices(services);
-        setSelectedService(services[0]); // default first service
-
-        const avgRes = await getProviderAverageRating(id);
-        setAverageRating(avgRes.data || 0);
-
-        // fetch reviews only for the first service initially
-        const reviewsRes = await getReviewsByProvider(id);
-        setReviews(reviewsRes.data || []);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchData();
-  }, [id]);
-
-  const handleSubmitReview = async () => {
-    if (!user) return alert("Please log in to submit a review.");
-    if (!newReview.comment.trim()) return alert("Please write a comment.");
-    try {
-      await addReview({
-        customer: { id: user.id },
-        provider: { id: parseInt(id) },
-        service: { id: selectedService.id },
-        rating: newReview.rating,
-        comment: newReview.comment,
-      });
-      setNewReview({ rating: 5, comment: "" });
-      const res = await getReviewsByProvider(id);
-      setReviews(res.data || []);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to submit review.");
-    }
-  };
-
-  const handleBack = () => {
-    if (window.history.length > 1) navigate(-1);
-    else navigate("/customer-dashboard");
-  };
-
-  if (!providerServices.length)
-    return (
-      <p className="text-center mt-10 text-gray-400 animate-pulse">
-        Loading...
-      </p>
-    );
-
-  const provider = providerServices[0];
-  const filteredReviews = reviews.filter(
-    (r) => r.service?.id === selectedService?.id
-  );
-
-  return (
-    <div className="max-w-7xl mx-auto p-6 bg-gradient-to-b from-[#f6e5da] to-white min-h-screen">
-      <div className="mb-6">
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-[#6e290c] font-semibold hover:text-[#a44a1d] transition"
-        >
-          <FiArrowLeft className="w-5 h-5" />
-          Back
-        </button>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* ---------- LEFT PROFILE PANEL ---------- */}
-        <div className="lg:w-1/3 bg-gradient-to-br from-[#6e290c] to-[#a44a1d] rounded-3xl p-6 text-center lg:text-left shadow-2xl sticky top-8 h-fit">
-          <div className="flex flex-col items-center lg:items-start space-y-4">
-            <img
-              src={`https://ui-avatars.com/api/?name=${provider.providerName}&background=6e290c&color=fff&size=128`}
-              alt="Provider"
-              className="w-28 h-28 rounded-full border-4 border-white shadow-md"
-            />
-            <h2 className="text-3xl font-bold text-white">
-              {provider.providerName}
-            </h2>
-            <p className="text-white/80">{provider.location}</p>
-            <span className="px-3 py-1 bg-white text-[#6e290c] rounded-full font-semibold shadow">
-              {provider.category}
-            </span>
-            <div className="flex justify-between w-full text-center mt-4">
-              {[
-                { label: "Rating", value: averageRating.toFixed(1), color: "text-yellow-300" },
-                { label: "Services", value: providerServices.length, color: "text-green-300" },
-                { label: "Reviews", value: reviews.length, color: "text-orange-300" },
-              ].map((stat, i) => (
-                <div key={i} className="bg-white/20 rounded-xl p-3 flex-1 mx-1">
-                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                  <p className="text-xs text-white/80">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-            <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
-              <h3 className="font-semibold mb-1">⏰ Availability</h3>
-              <p>{provider.availability || "Not specified"}</p>
-            </div>
-            <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
-              <h3 className="font-semibold mb-1">👤 About</h3>
-              <p className="text-sm">{provider.about || "This provider hasn’t added any details yet."}</p>
-            </div>
-            <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
-              <h3 className="font-semibold mb-1">📞 Contact</h3>
-              <p>Email: {provider.email || "Not available"}</p>
-              <p>Phone: {provider.phone || "Not available"}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ---------- RIGHT SIDE ---------- */}
-        <div className="lg:w-2/3 flex-1">
-          {/* Tabs */}
-          <div className="flex gap-4 border-b border-gray-200 pb-2 mb-6">
-            {["services", "reviews"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 text-sm font-semibold rounded-full transition-all ${
-                  activeTab === tab
-                    ? "bg-[#6e290c] text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {tab === "services" ? "Services" : "Reviews"}
-              </button>
-            ))}
-          </div>
-
-          {/* Services Tab */}
-          {activeTab === "services" && (
-            <>
-              {/* Selected Service */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-[#f1c6ad]">
-                <h3 className="text-2xl font-bold text-[#6e290c] mb-2">
-                  {selectedService.subcategory}
-                </h3>
-                <p className="text-gray-700 mb-4">{selectedService.description}</p>
-                <p className="font-semibold text-[#6e290c] text-lg mb-2">
-                  Price: ₹{selectedService.price}
-                </p>
-                <p className="text-sm text-gray-600 mb-4">
-                  Availability: {selectedService.availability || "Not specified"}
-                </p>
-                <button
-                  onClick={() => setBookingService(selectedService)}
-                  className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
-                >
-                  Book Now
-                </button>
-              </div>
-
-              {/* Other Services */}
-              <h4 className="text-lg font-semibold text-[#6e290c] mb-3">
-                Other Services Offered
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {providerServices
-                  .filter((s) => s.id !== selectedService.id)
-                  .map((service) => (
-                    <div
-                      key={service.id}
-                      className="bg-white rounded-2xl shadow p-5 hover:shadow-lg transition border border-[#f1c6ad]"
-                    >
-                      <h3 className="text-lg font-bold text-[#6e290c] mb-1">
-                        {service.subcategory}
-                      </h3>
-                      <p className="text-gray-600 text-sm line-clamp-2 mb-2">
-                        {service.description}
-                      </p>
-                      <p className="text-[#6e290c] font-semibold mb-3">
-                        ₹{service.price}
-                      </p>
-                      <button
-                        onClick={() => setSelectedService(service)}
-                        className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
-                      >
-                        View Service
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            </>
-          )}
-
-          {/* Reviews Tab */}
-          {activeTab === "reviews" && (
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-[#6e290c]">
-                Reviews for {selectedService?.category} - {selectedService?.subcategory}
-              </h4>
-
-              {filteredReviews.length === 0 && (
-                <p className="text-gray-400 text-center mt-10 animate-pulse">
-                  No reviews for this service yet.
-                </p>
-              )}
-              {filteredReviews.map((r) => {
-                const name = r.customer?.name || "Customer";
-                return (
-                  <div
-                    key={r.id}
-                    className="bg-white rounded-2xl shadow-sm p-4 border border-[#f1c6ad]"
-                  >
-                    <div className="flex gap-3 items-start">
-                      <div className="w-10 h-10 rounded-full bg-[#6e290c] flex items-center justify-center text-white font-bold">
-                        {name.charAt(0)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                          <p className="font-semibold text-[#6e290c]">{name}</p>
-                          <div className="flex text-yellow-400">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <span key={i} className={i < r.rating ? "opacity-100" : "opacity-30"}>
-                                ★
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-gray-600 text-sm mt-1">{r.comment}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Add Review */}
-              <div className="bg-white rounded-2xl shadow-md p-5 mt-6 space-y-3 border border-[#f1c6ad]">
-                <h4 className="font-bold text-[#6e290c]">Write a Review</h4>
-                <select
-                  value={newReview.rating}
-                  onChange={(e) =>
-                    setNewReview({ ...newReview, rating: parseInt(e.target.value) })
-                  }
-                  className="border w-full px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#6e290c] focus:outline-none"
-                >
-                  {[5, 4, 3, 2, 1].map((r) => (
-                    <option key={r} value={r}>
-                      {r} Star{r > 1 ? "s" : ""}
-                    </option>
-                  ))}
-                </select>
-                <textarea
-                  value={newReview.comment}
-                  onChange={(e) =>
-                    setNewReview({ ...newReview, comment: e.target.value })
-                  }
-                  rows={3}
-                  placeholder="Write your review..."
-                  className="border w-full px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#6e290c] focus:outline-none"
-                />
-                <button
-                  onClick={handleSubmitReview}
-                  className="w-full py-2 bg-[#6e290c] text-white font-semibold rounded-2xl hover:bg-[#a44a1d] transition"
-                >
-                  Submit
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {bookingService && (
-        <BookingModal
-          service={bookingService}
-          customer={user}
-          onClose={() => setBookingService(null)}
-        />
-      )}
-    </div>
-  );
-}
 function BookingModal({ service, customer, onClose }) {
   const [formData, setFormData] = useState({ bookingDate: "", timeSlot: "", notes: "" });
   const [loading, setLoading] = useState(false);
@@ -360,9 +69,7 @@ function BookingModal({ service, customer, onClose }) {
     }
   };
 
-  const handleSlotSelect = (slot) => {
-    setFormData({ ...formData, timeSlot: slot });
-  };
+  const handleSlotSelect = (slot) => setFormData({ ...formData, timeSlot: slot });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -387,13 +94,7 @@ function BookingModal({ service, customer, onClose }) {
       });
 
       navigate("/booking-summary", {
-        state: {
-          booking: {
-            ...res.data,
-            service,
-            providerName: service.providerName || "Provider",
-          },
-        },
+        state: { booking: { ...res.data, service, providerName: service.providerName || "Provider" } },
       });
       onClose();
     } catch (err) {
@@ -409,15 +110,10 @@ function BookingModal({ service, customer, onClose }) {
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800">
           ✖
         </button>
-        <h2 className="text-2xl font-bold text-center text-[#6e290c] mb-3">
-          Book {service.subcategory}
-        </h2>
-        <p className="text-center text-gray-500 mb-6">
-          Available: {service.availability || "Not specified"}
-        </p>
+        <h2 className="text-2xl font-bold text-center text-[#6e290c] mb-3">Book {service.subcategory}</h2>
+        <p className="text-center text-gray-500 mb-6">Available: {service.availability || "Not specified"}</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Booking Date */}
           <div>
             <label className="block text-sm font-semibold text-[#6e290c] mb-1">Booking Date</label>
             <input
@@ -429,7 +125,6 @@ function BookingModal({ service, customer, onClose }) {
             />
           </div>
 
-          {/* Time Slots */}
           {formData.bookingDate && (
             <div>
               <label className="block text-sm font-semibold text-[#6e290c] mb-2">Select Time Slot</label>
@@ -452,7 +147,6 @@ function BookingModal({ service, customer, onClose }) {
             </div>
           )}
 
-          {/* Notes */}
           <div>
             <label className="block text-sm font-semibold text-[#6e290c] mb-1">Notes (Optional)</label>
             <textarea
@@ -464,9 +158,7 @@ function BookingModal({ service, customer, onClose }) {
             />
           </div>
 
-          {message && (
-            <p className="text-center text-sm text-red-500 bg-red-50 py-2 rounded-xl">{message}</p>
-          )}
+          {message && <p className="text-center text-sm text-red-500 bg-red-50 py-2 rounded-xl">{message}</p>}
 
           <button
             type="submit"
@@ -477,6 +169,353 @@ function BookingModal({ service, customer, onClose }) {
           </button>
         </form>
       </div>
+    </div>
+  );
+}
+
+function AddReviewSection({ user, providerId, bookingId, selectedService, newReview, setNewReview, handleSubmitReview }) {
+  const { token } = useAuth();
+  const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+ useEffect(() => {
+  const checkCompletedBooking = async () => {
+    if (!bookingId || !token) {
+      setHasCompletedBooking(false);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:8080/api/bookings/${bookingId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        setHasCompletedBooking(false);
+        return;
+      }
+
+      const booking = await res.json();
+
+      // ✅ Check if already reviewed
+      const existingReviewRes = await fetch(
+        `http://localhost:8080/api/reviews/booking/${bookingId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const existingReview = existingReviewRes.ok ? await existingReviewRes.json() : null;
+
+      const completed =
+        booking.status?.toUpperCase() === "COMPLETED" &&
+        booking.provider?.id === providerId &&
+        !existingReview; // ✅ allow only if not reviewed
+
+      setHasCompletedBooking(completed);
+    } catch (err) {
+      console.error("Error fetching booking:", err);
+      setHasCompletedBooking(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (user?.id && providerId) checkCompletedBooking();
+}, [user, providerId, bookingId, selectedService?.id]);
+
+
+
+
+
+  if (loading) return <p className="text-center text-gray-400 animate-pulse mt-4">Checking booking status...</p>;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md p-5 mt-6 space-y-3 border border-[#f1c6ad]">
+      <h4 className="font-bold text-[#6e290c]">Write a Review</h4>
+      {hasCompletedBooking ? (
+        <>
+          <select
+            value={newReview.rating}
+            onChange={(e) => setNewReview({ ...newReview, rating: parseInt(e.target.value) })}
+            className="border w-full px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#6e290c] focus:outline-none"
+          >
+            {[5, 4, 3, 2, 1].map((r) => (
+              <option key={r} value={r}>{r} Star{r > 1 ? "s" : ""}</option>
+            ))}
+          </select>
+
+          <textarea
+            value={newReview.comment}
+            onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+            rows={3}
+            placeholder="Write your review..."
+            className="border w-full px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#6e290c] focus:outline-none"
+          />
+
+          <button
+            onClick={handleSubmitReview}
+            className="w-full py-2 bg-[#6e290c] text-white font-semibold rounded-2xl hover:bg-[#a44a1d] transition"
+          >
+            Submit
+          </button>
+        </>
+      ) : (
+        <p className="text-gray-500 italic mt-3">
+          You can submit a review only after your booking with this provider is{" "}
+          <span className="font-semibold text-[#6e290c]">completed.</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+
+export default function ProviderDetailPage() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+   const location = useLocation(); // ✅ add this
+
+  // Booking info from navigation (if coming from Bookings tab)
+  const bookingId = location.state?.bookingId;
+  const serviceIdFromBooking = location.state?.serviceId;
+
+  const [providerServices, setProviderServices] = useState([]);
+  const [selectedService, setSelectedService] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [activeTab, setActiveTab] = useState("services");
+  const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
+  const [bookingService, setBookingService] = useState(null);
+
+  
+
+  useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const allServices = await getAllServices();
+      const services = allServices.data.filter((s) => s.providerId === parseInt(id));
+      setProviderServices(services);
+
+      const preSelected = services.find((s) => s.id === serviceIdFromBooking) || services[0];
+      setSelectedService(preSelected || null);
+
+      const avgRes = await getProviderAverageRating(id);
+      setAverageRating(avgRes.data || 0);
+
+      const reviewsRes = await getReviewsByProvider(id);
+      setReviews(reviewsRes.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  fetchData();
+}, [id, serviceIdFromBooking]);
+
+
+
+
+  const handleSubmitReview = async () => {
+    if (!user) return alert("Please log in to submit a review.");
+    if (!newReview.comment.trim()) return alert("Please write a comment.");
+    try {
+      await addReview({
+         booking: bookingId ? { id: bookingId } : null,
+        customer: { id: user.id },
+        provider: { id: parseInt(id) },
+        service: { id: selectedService.id },
+        rating: newReview.rating,
+        comment: newReview.comment,
+      });
+      setNewReview({ rating: 5, comment: "" });
+      const res = await getReviewsByProvider(id);
+      setReviews(res.data || []);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to submit review.");
+    }
+  };
+
+  const handleBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/customer-dashboard"));
+
+  if (!providerServices.length)
+    return <p className="text-center mt-10 text-gray-400 animate-pulse">Loading...</p>;
+
+  const provider = providerServices[0];
+  const filteredReviews = reviews.filter((r) => r.service?.id === selectedService?.id);
+
+  return (
+    <div className="max-w-7xl mx-auto p-6 bg-gradient-to-b from-[#f6e5da] to-white min-h-screen">
+      <div className="mb-6">
+        <button
+          onClick={handleBack}
+          className="flex items-center gap-2 text-[#6e290c] font-semibold hover:text-[#a44a1d] transition"
+        >
+          <FiArrowLeft className="w-5 h-5" /> Back
+        </button>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* LEFT PANEL */}
+        <div className="lg:w-1/3 bg-gradient-to-br from-[#6e290c] to-[#a44a1d] rounded-3xl p-6 text-center lg:text-left shadow-2xl sticky top-8 h-fit">
+          <div className="flex flex-col items-center lg:items-start space-y-4">
+            <img
+              src={`https://ui-avatars.com/api/?name=${provider.providerName}&background=6e290c&color=fff&size=128`}
+              alt="Provider"
+              className="w-28 h-28 rounded-full border-4 border-white shadow-md"
+            />
+            <h2 className="text-3xl font-bold text-white">{provider.providerName}</h2>
+            <p className="text-white/80">{provider.location}</p>
+            <span className="px-3 py-1 bg-white text-[#6e290c] rounded-full font-semibold shadow">{provider.category}</span>
+
+            <div className="flex justify-between w-full text-center mt-4">
+              {[
+                { label: "Rating", value: averageRating.toFixed(1), color: "text-yellow-300" },
+                { label: "Services", value: providerServices.length, color: "text-green-300" },
+                { label: "Reviews", value: reviews.length, color: "text-orange-300" },
+              ].map((stat, i) => (
+                <div key={i} className="bg-white/20 rounded-xl p-3 flex-1 mx-1">
+                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                  <p className="text-xs text-white/80">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
+              <h3 className="font-semibold mb-1">⏰ Availability</h3>
+              <p>{provider.availability || "Not specified"}</p>
+            </div>
+
+            <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
+              <h3 className="font-semibold mb-1">👤 About</h3>
+              <p className="text-sm">{provider.about || "This provider hasn’t added any details yet."}</p>
+            </div>
+
+            <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
+              <h3 className="font-semibold mb-1">📞 Contact</h3>
+              <p>Email: {provider.email || "Not available"}</p>
+              <p>Phone: {provider.phone || "Not available"}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div className="lg:w-2/3 flex-1">
+          {/* Tabs */}
+          <div className="flex gap-4 border-b border-gray-200 pb-2 mb-6">
+            {["services", "reviews"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2 text-sm font-semibold rounded-full transition-all ${
+                  activeTab === tab
+                    ? "bg-[#6e290c] text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {tab === "services" ? "Services" : "Reviews"}
+              </button>
+            ))}
+          </div>
+
+          {/* SERVICES TAB */}
+          {activeTab === "services" && selectedService && (
+            <>
+              <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-[#f1c6ad]">
+                <h3 className="text-2xl font-bold text-[#6e290c] mb-2">{selectedService.subcategory}</h3>
+                <p className="text-gray-700 mb-4">{selectedService.description}</p>
+                <p className="font-semibold text-[#6e290c] text-lg mb-2">Price: ₹{selectedService.price}</p>
+                <p className="text-sm text-gray-600 mb-4">Availability: {selectedService.availability || "Not specified"}</p>
+                <button
+                  onClick={() => setBookingService(selectedService)}
+                  className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
+                >
+                  Book Now
+                </button>
+              </div>
+
+              <h4 className="text-lg font-semibold text-[#6e290c] mb-3">Other Services Offered</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {providerServices.filter((s) => s.id !== selectedService.id).map((service) => (
+                  <div
+                    key={service.id}
+                    className="bg-white rounded-2xl shadow p-5 hover:shadow-lg transition border border-[#f1c6ad]"
+                  >
+                    <h3 className="text-lg font-bold text-[#6e290c] mb-1">{service.subcategory}</h3>
+                    <p className="text-gray-600 text-sm line-clamp-2 mb-2">{service.description}</p>
+                    <p className="text-[#6e290c] font-semibold mb-3">₹{service.price}</p>
+                    <button
+                      onClick={() => setSelectedService(service)}
+                      className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
+                    >
+                      View Service
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* REVIEWS TAB */}
+          {activeTab === "reviews" && (
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-[#6e290c]">
+                Reviews for {selectedService?.category} - {selectedService?.subcategory}
+              </h4>
+
+              {filteredReviews.length === 0 && (
+                <p className="text-gray-400 text-center mt-10 animate-pulse">
+                  No reviews for this service yet.
+                </p>
+              )}
+
+              {filteredReviews.map((r) => {
+                const name = r.customer?.name || "Customer";
+                return (
+                  <div key={r.id} className="bg-white rounded-2xl shadow-sm p-4 border border-[#f1c6ad]">
+                    <div className="flex gap-3 items-start">
+                      <div className="w-10 h-10 rounded-full bg-[#6e290c] flex items-center justify-center text-white font-bold">
+                        {name.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                          <p className="font-semibold text-[#6e290c]">{name}</p>
+                          <div className="flex text-yellow-400">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <span key={i} className={i < r.rating ? "opacity-100" : "opacity-30"}>
+                                ★
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-gray-600 text-sm mt-1">{r.comment}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <AddReviewSection
+                user={user}
+                providerId={parseInt(id)}
+                bookingId={bookingId} 
+                selectedService={selectedService}
+                newReview={newReview}
+                setNewReview={setNewReview}
+                handleSubmitReview={handleSubmitReview}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* BOOKING MODAL */}
+      {bookingService && (
+        <BookingModal service={bookingService} customer={user} onClose={() => setBookingService(null)} />
+      )}
     </div>
   );
 }

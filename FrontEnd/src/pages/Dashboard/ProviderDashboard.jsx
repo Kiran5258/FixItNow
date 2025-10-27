@@ -1,38 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
 import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser } from "react-icons/fi";
 import { BiClipboard } from "react-icons/bi";
 import { GiHammerNails } from "react-icons/gi";
 import { AiOutlineCheckCircle, AiOutlineRadiusSetting } from "react-icons/ai";
 import { FaRegLightbulb } from "react-icons/fa";
 
-=======
-import { FiHome, FiLogOut, FiClock, FiXCircle } from "react-icons/fi";
-import { BiClipboard } from "react-icons/bi";
-import { GiElectric, GiHammerNails, GiBroom } from "react-icons/gi";
-import { AiOutlineCheckCircle } from "react-icons/ai";
-import { FaRegLightbulb } from "react-icons/fa";
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 import {
   getMyProfile,
   getServicesByProvider,
   updateService,
   deleteService,
   createService,
-<<<<<<< HEAD
   getBookingsByProvider,
   updateUser,
   updateBookingStatus,
   getProviderAverageRating,
   getReviewsByProvider,
-  deleteReview
+  deleteReview,
+  markBookingCompleteByProvider,
   
 } from "../../services/api";
 import { Md18UpRating, MdReviews } from "react-icons/md";
-=======
-} from "../../services/api";
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 
 const rustBrown = "#6e290cff";
 
@@ -43,20 +32,15 @@ export default function ProviderDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("home");
-<<<<<<< HEAD
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [error, setError] = useState(false);
   const [reviews, setReviews] = useState([]);
 
   
-=======
-  const [error, setError] = useState(false);
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
-<<<<<<< HEAD
    const [editProfileData, setEditProfileData] = useState({
       name: "",
       email: "",
@@ -66,15 +50,11 @@ export default function ProviderDashboard() {
     const [respectScore, setRespectScore] = useState(0);
   const [respectLevel, setRespectLevel] = useState("Newbie");
   const [averageRating, setAverageRating] = useState(0);
-=======
-
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   useEffect(() => {
     const fetchData = async () => {
       try {
         const { data: providerData } = await getMyProfile();
         setProvider(providerData);
-<<<<<<< HEAD
         setEditProfileData({ ...providerData }); // initialize all fields
 
         const servicesRes = await getServicesByProvider(providerData.id);
@@ -114,11 +94,6 @@ export default function ProviderDashboard() {
       if (totalScore >= 80) setRespectLevel("Star Performer");
       else if (totalScore >= 50) setRespectLevel("Trusted Provider");
       else setRespectLevel("Newbie");
-=======
-
-        const servicesRes = await getServicesByProvider(providerData.id);
-        setServices(servicesRes.data || []);
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
       } catch (err) {
         console.error("Error fetching provider data:", err);
         setError(true);
@@ -134,7 +109,6 @@ export default function ProviderDashboard() {
     navigate("/login");
   };
 
-<<<<<<< HEAD
    const handleSaveProfile = async () => {
   try {
     const res = await updateUser(provider.id, editProfileData); // provider.id must match logged-in user
@@ -154,18 +128,13 @@ export default function ProviderDashboard() {
   };
 
 
-=======
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   const sidebarItems = [
     { name: "Home", icon: <FiHome className="text-white" />, key: "home" },
     { name: "My Services", icon: <GiHammerNails className="text-white" />, key: "services" },
     { name: "Bookings", icon: <BiClipboard className="text-white" />, key: "bookings" },
-<<<<<<< HEAD
     { name: "Profile", icon: <FiUser className="text-white" />, key: "profile" }, 
     { name: "Reviews", icon: <MdReviews className="text-white" />, key: "reviews" }, 
 
-=======
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   ];
 
   if (loading) return <div className="text-center p-6">Loading...</div>;
@@ -204,11 +173,7 @@ export default function ProviderDashboard() {
         {activeTab === "home" && (
           <div className="space-y-6">
             <Greeting provider={provider} />
-<<<<<<< HEAD
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-=======
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
               <MetricCard title="My Services" value={services.length} icon={<GiHammerNails style={{ color: rustBrown }} />} />
               <MetricCard title="Total Bookings" value={bookings.length} icon={<BiClipboard style={{ color: rustBrown }} />} />
               <MetricCard
@@ -216,7 +181,6 @@ export default function ProviderDashboard() {
                 value={bookings.filter(b => b.status?.toLowerCase() === "completed").length}
                 icon={<AiOutlineCheckCircle style={{ color: rustBrown }} />}
               />
-<<<<<<< HEAD
               <MetricCard
                 title="Avg Rating"
                 value={averageRating.toFixed(2)}
@@ -249,8 +213,6 @@ export default function ProviderDashboard() {
               <p className="text-sm text-gray-500 mt-2">
                 Complete bookings and maintain high ratings to increase your Respect Score and level up!
               </p>
-=======
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
             </div>
             <ServicePerformance services={services} bookings={bookings} />
             <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded shadow flex items-center gap-3">
@@ -273,7 +235,6 @@ export default function ProviderDashboard() {
         )}
 
         {activeTab === "bookings" && (
-<<<<<<< HEAD
           <BookingsCard bookings={bookings} setBookings={setBookings} />
         )}
 
@@ -296,10 +257,6 @@ export default function ProviderDashboard() {
 )}
 
 
-=======
-          <BookingsCard bookings={bookings} />
-        )}
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
       </main>
     </div>
   );
@@ -310,13 +267,9 @@ function Greeting({ provider }) {
   const hours = new Date().getHours();
   const greeting =
     hours < 12 ? "Good Morning" :
-<<<<<<< HEAD
     hours < 16 ? "Good Afternoon" :
     hours < 18 ? "Good Evening":
     "Good Night";
-=======
-    hours < 18 ? "Good Afternoon" : "Good Evening";
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 
   return (
     <h1 className="text-3xl font-bold mb-4" style={{ color: rustBrown }}>
@@ -339,12 +292,7 @@ function MetricCard({ title, value, icon }) {
   );
 }
 
-<<<<<<< HEAD
 // Services Card
-=======
-// Services with Modal 2
-// Services with Modal 2
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, editingService, setEditingService }) {
   const [newService, setNewService] = useState({
     category: "",
@@ -419,19 +367,10 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
           <div key={service.id} className="bg-white border rounded-xl p-5 shadow hover:shadow-lg transition" style={{ borderColor: rustBrown + "40" }}>
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{service.category} - {service.subcategory}</h3>
-<<<<<<< HEAD
             </div>
             <p className="text-sm mt-2">{service.description}</p>
             <p className="text-sm text-black/60"><b>Availability:</b> {service.availability}</p>
             <p className="text-sm text-black/60"><b>Location:</b> {service.location}</p>
-=======
-              
-            </div>
-            <p className="text-sm mt-2">{service.description}</p><br></br>
-            <b><p className="text-sm text-black/60">Availability: {service.availability}</p> {/* Display Availability */}
-            </b><br></br>
-            <p className="text-sm text-black/60">Location: {service.location}</p>
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
             <p className="font-semibold text-lg mt-2">₹{service.price}</p>
 
             <div className="flex gap-3 mt-2">
@@ -448,10 +387,6 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
         ))}
       </div>
 
-<<<<<<< HEAD
-=======
-      {/* Modal */}
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-lg relative">
@@ -498,11 +433,7 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
             <input
               type="number"
               value={newService.price}
-<<<<<<< HEAD
               onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) || 0 })}
-=======
-              onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) })}
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
               placeholder="Price"
               className="w-full px-4 py-2 mb-3 border rounded-md"
             />
@@ -542,23 +473,16 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
   );
 }
 
-<<<<<<< HEAD
 // Service Performance
 // ServicePerformance.jsx
 function ServicePerformance({ services, bookings }) {
   if (!services || services.length === 0) return null;
 
-=======
-
-// Service Performance
-function ServicePerformance({ services, bookings }) {
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   return (
     <div className="mt-6">
       <h2 className="text-xl font-bold mb-4">Service Performance</h2>
       <div className="flex flex-col gap-3">
         {services.map(service => {
-<<<<<<< HEAD
           const completedBookings = bookings.filter(
             b => b.service?.id === service.id && b.status?.toLowerCase() === "completed"
           ).length;
@@ -586,20 +510,6 @@ function ServicePerformance({ services, bookings }) {
                   className="h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%`, backgroundColor: progressColor }}
                 />
-=======
-          const completedBookings = bookings.filter(b => b.serviceId === service.id && b.status?.toLowerCase() === "completed").length;
-          const totalBookings = bookings.filter(b => b.serviceId === service.id).length;
-          const progress = totalBookings ? (completedBookings / totalBookings) * 100 : 0;
-
-          return (
-            <div key={service.id} className="bg-white p-3 rounded shadow flex flex-col gap-1">
-              <div className="flex justify-between">
-                <span>{service.category} - {service.subcategory}</span>
-                <span>{completedBookings}/{totalBookings} completed</span>
-              </div>
-              <div className="bg-gray-200 h-2 rounded-full">
-                <div className="bg-green-600 h-2 rounded-full" style={{ width: `${progress}%` }} />
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
               </div>
             </div>
           );
@@ -609,10 +519,7 @@ function ServicePerformance({ services, bookings }) {
   );
 }
 
-<<<<<<< HEAD
 
-=======
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 // Recent Activity
 function RecentActivity({ bookings }) {
   if (!bookings || bookings.length === 0) return null;
@@ -623,13 +530,9 @@ function RecentActivity({ bookings }) {
       <div className="flex flex-col gap-2">
         {bookings.slice(0, 5).map(b => (
           <div key={b.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
-<<<<<<< HEAD
             <span>{b.customer?.name  || "Unknown"}</span>
 <p>{b.service?.category} - {b.service?.subcategory}</p>
 
-=======
-            <span>{b.customerName || b.user} booked {b.service}</span>
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
             <span className="text-sm text-gray-500">{b.status}</span>
           </div>
         ))}
@@ -638,57 +541,44 @@ function RecentActivity({ bookings }) {
   );
 }
 
-// Bookings Card
-<<<<<<< HEAD
+
+
 function BookingsCard({ bookings, setBookings }) {
 
-=======
-function BookingsCard({ bookings }) {
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   const getStatusBadge = (status) => {
     switch (status?.toLowerCase()) {
       case "completed":
         return (
-<<<<<<< HEAD
           <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full font-semibold">
-=======
-          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
             <AiOutlineCheckCircle /> {status}
           </span>
         );
       case "pending":
         return (
-<<<<<<< HEAD
           <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full font-semibold">
-=======
-          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full">
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
             <FiClock /> {status}
           </span>
         );
       case "cancelled":
         return (
-<<<<<<< HEAD
           <span className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full font-semibold">
-=======
-          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full">
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
             <FiXCircle /> {status}
           </span>
         );
+      case "confirmed":
+        return (
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-semibold">
+            {status}
+          </span>
+        );
       default:
-<<<<<<< HEAD
         return <span className="px-2 py-1 bg-gray-100 rounded-full">{status}</span>;
     }
   };
 
   const handleStatusUpdate = async (bookingId, newStatus) => {
     try {
-      // Call backend endpoint
       await updateBookingStatus(bookingId, newStatus);
-
-      // Update UI state immediately
       setBookings(bookings.map(b =>
         b.id === bookingId ? { ...b, status: newStatus } : b
       ));
@@ -698,76 +588,128 @@ function BookingsCard({ bookings }) {
     }
   };
 
+  const handleMarkComplete = async (bookingId) => {
+  try {
+    await markBookingCompleteByProvider(bookingId); // backend can just set providerMarkedComplete = true
+    setBookings(bookings.map(b =>
+      b.id === bookingId ? { ...b, providerMarkedComplete: true } : b
+    ));
+    alert("Marked as completed. Waiting for customer verification.");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to mark booking as complete.");
+  }
+};
+
+
   if (!bookings || bookings.length === 0) {
     return <p className="text-black/70 mt-4">No bookings available.</p>;
   }
 
-=======
-        return <span>{status}</span>;
-    }
-  };
-
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   return (
     <div className="mt-6">
       <h2 className="text-2xl font-bold mb-4 flex items-center gap-2" style={{ color: rustBrown }}>
         <BiClipboard /> My Bookings
       </h2>
 
-<<<<<<< HEAD
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {bookings.map((b) => (
-          <div
-            key={b.id}
-            className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
-            style={{
-              borderColor:
-                b.status?.toLowerCase() === "pending"
-                  ? "#facc15"
-                  : b.status?.toLowerCase() === "completed"
-                  ? "#16a34a"
-                  : "#dc2626",
-            }}
-          >
-            <div className="flex col items-center gap-3">
-              <FiUser/>
-              <h3 className="font-semibold text-lg">
-                
-                {b.customer?.name || b.customer?.username || "Unknown"}
-              </h3>
-              {getStatusBadge(b.status)}
-            </div>
+        {bookings.map((b) => {
+          const now = new Date();
 
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">{b.service?.category}</span> - {b.service?.subcategory}
-            </p>
-            <p className="text-sm text-gray-600">{b.service?.description}</p>
-            <p className="text-sm text-gray-600">
-              <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
-            </p>
+  // Extract start time from timeSlot
+  const startTime = b.timeSlot.split(" - ")[0]; // "9:00 AM"
 
-            {b.status?.toLowerCase() === "pending" && (
-              <div className="flex gap-2 mt-2">
-                <button
-                  className="flex-1 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
-                  onClick={() => handleStatusUpdate(b.id, "COMPLETED")}
-                >
-                  Accept
-                </button>
-                <button
-                  className="flex-1 bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
-                  onClick={() => handleStatusUpdate(b.id, "CANCELLED")}
-                >
-                  Decline
-                </button>
+  // Combine date + start time to get booking Date object
+  const bookingDateTime = new Date(`${b.bookingDate} ${startTime}`);
+
+  // Check if "Mark as Complete" button should show
+  const showMarkCompleteBtn =
+    b.status?.toLowerCase() === "confirmed" &&
+    !b.providerMarkedComplete &&
+    bookingDateTime <= now;
+
+console.log("Booking ID:", b.id, "BookingDateTime:", bookingDateTime, "Now:", now, "ShowBtn:", showMarkCompleteBtn,b.bookingDate,b.timeSlot);
+
+
+
+          return (
+            <div
+              key={b.id}
+              className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
+              style={{
+                borderColor:
+                  b.status?.toLowerCase() === "pending"
+                    ? "#facc15"
+                    : b.status?.toLowerCase() === "completed"
+                    ? "#16a34a"
+                    : b.status?.toLowerCase() === "confirmed"
+                    ? "#3b82f6"
+                    : "#dc2626",
+              }}
+            >
+              <div className="flex col items-center gap-3">
+                <FiUser/>
+                <h3 className="font-semibold text-lg">
+                  {b.customer?.name || b.customer?.username || "Unknown"}
+                </h3>
+                {getStatusBadge(b.status)}
               </div>
-            )}
-          </div>
-        ))}
+
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">{b.service?.category}</span> - {b.service?.subcategory}
+              </p>
+              <p className="text-sm text-gray-600">{b.service?.description}</p>
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
+              </p>
+
+              {/* Pending Booking Buttons */}
+              {b.status?.toLowerCase() === "pending" && (
+                <div className="flex gap-2 mt-2">
+                  <button
+                    className="flex-1 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
+                    onClick={() => handleStatusUpdate(b.id, "CONFIRMED")}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    className="flex-1 bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
+                    onClick={() => handleStatusUpdate(b.id, "CANCELLED")}
+                  >
+                    Decline
+                  </button>
+                </div>
+              )}
+
+              {/* Confirmed Booking => Mark as Completed */}
+              {showMarkCompleteBtn && (
+                <button
+                  className="flex-1 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition mt-2"
+                  onClick={() => handleMarkComplete(b.id)}
+                >
+                  Mark as Completed
+                </button>
+              )}
+
+              {/* Waiting for customer verification */}
+              {/* Show status */}
+{/* Waiting for customer verification */}
+{b.status?.toLowerCase() === "confirmed" && b.providerMarkedComplete && (
+  <span className="flex-1 text-center bg-yellow-100 text-yellow-800 px-3 py-1 rounded-lg mt-2">
+    Waiting for customer verification
+  </span>
+)}
+
+
+
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
 
 function ProfileTab({
   provider,
@@ -944,24 +886,6 @@ function ReviewsTab({ reviews }) {
           </div>
         ))}
       </div>
-=======
-      {(!bookings || bookings.length === 0) ? (
-        <p className="text-black/70">No bookings available.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {bookings.map((b) => (
-            <div key={b.id} className="bg-white border rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-2" style={{ borderColor: rustBrown + "40" }}>
-              <div className="flex items-center gap-3">
-                <BiClipboard className="text-2xl" style={{ color: rustBrown }} />
-                <h3 className="font-semibold text-lg">{b.customerName || b.user}</h3>
-              </div>
-              <p className="text-sm text-black/70">{b.service}</p>
-              <div className="mt-2">{getStatusBadge(b.status)}</div>
-            </div>
-          ))}
-        </div>
-      )}
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
     </div>
   );
 }

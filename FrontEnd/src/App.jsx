@@ -1,16 +1,11 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-<<<<<<< HEAD
 
 import Home from "./pages/Dashboard/Home";
-=======
-import Userprovider from "./content/Userprovider";
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
 import Registration from "./pages/Auth/Registration";
 import Login from "./pages/Auth/Login";
 import ProviderDashboard from "./pages/Dashboard/ProviderDashboard";
 import CustomerDashboard from "./pages/Dashboard/CustomerDashboard";
 import AdminDashboard from "./pages/Dashboard/AdminDashboard";
-<<<<<<< HEAD
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
@@ -26,16 +21,6 @@ function App() {
           <Route path="/register" element={<Registration />} />
           <Route path="/login" element={<Login />} />
 
-=======
-import ProtectedRoute from "./components/ProtectedRoute";
-
-function App() {
-  return (
-    <Userprovider>
-        <Routes>
-          <Route path="/register" element={<Registration />} />
-          <Route path="/login" element={<Login />} />
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
           {/* Protected Routes */}
           <Route
             path="/provider-dashboard"
@@ -61,7 +46,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-<<<<<<< HEAD
 
           {/* Provider Detail Page */}
           <Route
@@ -87,11 +71,6 @@ function App() {
           <Route path="*" element={<Home />} />
         </Routes>
     </AuthProvider>
-=======
-        </Routes>
-      
-    </Userprovider>
->>>>>>> bc6283a1b8465728100111aba7f88dc8bdddce84
   );
 }
 

@@ -24,11 +24,13 @@ API.interceptors.request.use(
 // =====================
 // AUTH APIs (no token needed)
 // =====================
-export const register = (userData) =>
-  axios.post("http://localhost:8080/api/auth/register", userData);
+export const register = (userData) => {
+  return axios.post("http://localhost:8080/api/auth/register", userData);
+};
 
-export const login = (credentials) =>
-  axios.post("http://localhost:8080/api/auth/login", credentials);
+export const login = (credentials) => {
+  return axios.post("http://localhost:8080/api/auth/login", credentials);
+};
 
 //
 // =====================
@@ -36,8 +38,7 @@ export const login = (credentials) =>
 // =====================
 export const createService = (data) => API.post("/services", data);
 export const getAllServices = () => API.get("/services");
-export const getServicesByProvider = (providerId) =>
-  API.get(`/services/provider/${providerId}`);
+export const getServicesByProvider = (providerId) => API.get(`/services/provider/${providerId}`);
 export const updateService = (id, data) => API.put(`/services/${id}`, data);
 export const deleteService = (id) => API.delete(`/services/${id}`);
 
@@ -53,29 +54,21 @@ export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const deleteUser = (id) => API.delete(`/users/${id}`);
 export const getUserByEmail = (email) => API.get(`/users/email/${email}`);
 
-//
-// =====================
-// BOOKING APIs (token required)
-// =====================
+
+// BOOKING APIs
+export const createBooking = (data) => API.post("/bookings/create", data);
 export const getBookingsByCustomer = (customerId) =>
   API.get(`/bookings/customer/${customerId}`);
-
-// Create a new booking (CUSTOMER)
-export const createBooking = (bookingData) => API.post("/bookings/create", bookingData);
-
-// Get all bookings for a customer (CUSTOMER or ADMIN)
-export const getCustomerBookings = (customerId) =>
-  API.get(`/bookings/customer/${customerId}`);
-
-// Get all bookings for a provider (PROVIDER or ADMIN)
-export const getProviderBookings = (providerId) =>
+export const getBookingsByProvider = (providerId) =>
   API.get(`/bookings/provider/${providerId}`);
-
-// ✅ Update booking status (PROVIDER or ADMIN)
 export const updateBookingStatus = (bookingId, status) =>
   API.put(`/bookings/updateStatus/${bookingId}?status=${status}`);
 // ADMIN: Get all bookings
 export const getAllBookings = () => API.get("/bookings/all");
+export const markBookingCompleteByProvider = (bookingId) =>
+  API.post(`/bookings/${bookingId}/markComplete`);
+export const verifyBookingByCustomer = (bookingId) =>
+  API.post(`/bookings/${bookingId}/verify`);
 
 
 
