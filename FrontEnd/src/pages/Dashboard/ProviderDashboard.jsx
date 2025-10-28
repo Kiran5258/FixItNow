@@ -324,18 +324,17 @@ const [token, setToken] = useState(localStorage.getItem("token"));
     {/* Right: Chat Window */}
     <div className="flex-1 flex flex-col justify-center items-center bg-gray-50 p-4">
       {selectedCustomer ? (
-        <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-xl shadow-sm p-4 h-[100vh] flex flex-col">
-          <div className="flex items-center justify-between border-b pb-3 mb-3">
-            <h2 className="text-lg font-semibold text-[#6e290c]">
-              Chat with {selectedCustomer.name}
-            </h2>
-            <button
+        
+        <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-xl shadow-sm p-4 h-[100vh] flex flex-col ">
+          
+          <button
               onClick={() => setSelectedCustomer(null)}
-              className="text-gray-400 hover:text-red-500 transition"
+              className="text-gray-400 hover:text-red-500 transition text-right mt-2 "
             >
               ✕
             </button>
-          </div>
+          
+
           <ChatComponent
             token={token}
             receiverId={selectedCustomer.id}
@@ -358,31 +357,34 @@ const [token, setToken] = useState(localStorage.getItem("token"));
       {/* Floating Admin Chat Button and Modal – stays visible always */}
 {showAdminChat && (
   <div
-    className="fixed bottom-20 right-6 sm:right-10 bg-white shadow-2xl rounded-2xl
-               w-[29rem] max-w-[90vw] h-[36rem] border border-gray-200 p-4 flex flex-col z-50">
-    <div className="flex justify-between items-center mb-2 border-b pb-2">
-      <h3 className="font-semibold text-gray-700 text-base">Chat with Admin</h3>
-      <button
+    className="fixed bottom-20 right-6 sm:right-10 bg-white shadow-2xl rounded-2xl w-[29rem] max-w-[90vw] h-[36rem] border border-gray-200 p-4 flex flex-col z-50 transition-all duration-300"
+    style={{ transform: "translateY(0)" }}
+  >
+    <button
         onClick={() => setShowAdminChat(false)}
-        className="text-gray-500 hover:text-red-500">
+        className="text-gray-500 hover:text-red-500 transition-colors flex justify-end"
+      >
         <FiX size={20} />
       </button>
-    </div>
-    <div className="flex justify-center items-center w-full h-full overflow-auto">
-      <ChatComponent token={token} receiverId={13} theme="admin" />
-    </div>
+    <div className="flex justify-center items-center w-full max-w-[90vw]">
+    <ChatComponent token={token} receiverId={13} theme={"admin"} />
   </div>
+    
+</div>
 )}
 
+{/* Floating Chat Button */}
 <button
   onClick={() => setShowAdminChat(!showAdminChat)}
-  className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-indigo-600 hover:bg-indigo-700
-             text-white p-4 rounded-full shadow-lg z-50 transition-transform hover:scale-105">
+  className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg z-50 transition-transform hover:scale-105"
+>
   <FiMessageCircle size={24} />
 </button>
-    </div>
+      </div>
+   
   );
 }
+
 
 // Greeting Component
 function Greeting({ provider }) {

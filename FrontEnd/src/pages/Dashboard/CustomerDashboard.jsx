@@ -688,21 +688,16 @@ const filteredSortedServices = (servicesWithDistance || [])
     className="fixed bottom-20 right-6 sm:right-10 bg-white shadow-2xl rounded-2xl w-[29rem] max-w-[90vw] h-[36rem] border border-gray-200 p-4 flex flex-col z-50 transition-all duration-300"
     style={{ transform: "translateY(0)" }}
   >
-    <div className="flex justify-between items-center mb-2 border-b pb-2">
-      <h3 className="font-semibold text-gray-700 text-base">Chat with Admin</h3>
-      <button
+    <button
         onClick={() => setShowAdminChat(false)}
-        className="text-gray-500 hover:text-red-500 transition-colors"
+        className="text-gray-500 hover:text-red-500 transition-colors flex justify-end"
       >
         <FiX size={20} />
       </button>
-    </div>
-
-    <div className="flex justify-center items-center w-full h-full overflow-auto">
-  <div className="flex justify-center items-center w-full max-w-[90vw]">
+    <div className="flex justify-center items-center w-full max-w-[90vw]">
     <ChatComponent token={token} receiverId={13} theme={"admin"} />
   </div>
-</div>
+    
 </div>
 )}
 
@@ -793,6 +788,8 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId }) {
 function BookingsTab({ bookings, setBookings ,reviewsMap}) {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
+  const [selectedChatProvider, setSelectedChatProvider] = useState(null);
+
 
   
 

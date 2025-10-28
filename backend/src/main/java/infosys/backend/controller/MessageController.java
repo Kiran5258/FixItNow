@@ -128,9 +128,12 @@ public void sendMessageWebSocket(
    System.out.println("📤 Sending WebSocket message to user: " + receiver.getEmail());
 messagingTemplate.convertAndSendToUser(receiver.getEmail().toLowerCase(), "/queue/messages", dto);
 
-    messagingTemplate.convertAndSendToUser(sender.getEmail(), "/queue/messages", dto);
+    messagingTemplate.convertAndSendToUser(sender.getEmail().toLowerCase(), "/queue/messages", dto);
 
     System.out.println("✅ Message saved and sent via WebSocket: " + dto);
+    System.out.println("📨 WebSocket header user: " + headerAccessor.getUser());
+System.out.println("📨 Sending to user: " + receiver.getEmail());
+
 }
 
 
