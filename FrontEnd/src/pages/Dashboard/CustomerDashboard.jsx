@@ -11,8 +11,11 @@ import {
   FiMapPin,
   FiCalendar, FiClock,
    FiXCircle,
+   FiMessageCircle ,
+   FiX,
   
 } from "react-icons/fi";
+import ChatComponent from "../../components/ChatComponent";
 import { MdMiscellaneousServices } from "react-icons/md";
 import { BiHistory } from "react-icons/bi";
 import { AiOutlineCheckCircle } from "react-icons/ai";
@@ -126,6 +129,7 @@ export default function CustomerDashboard() {
   const [customer, setCustomer] = useState(null);
   const [servicesWithDistance, setServicesWithDistance] = useState([]);
   const [reviewsMap, setReviewsMap] = useState({});
+  
 
 
   const [sortOption, setSortOption] = useState("rating");
@@ -495,8 +499,10 @@ const handleCancelProfile = () => {
               setSelectedService={setSelectedService}
               setIsBookingModalOpen={setIsBookingModalOpen}
               openReviewModal={openReviewModal}
+              token ={token}
             />
           )}
+          
 
           {/* BOOKINGS TAB */}
           {activeTab === "bookings" && <BookingsTab bookings={bookings} setBookings={setBookings} reviewsMap={reviewsMap}/>}
@@ -569,10 +575,13 @@ function ServicesTab({
   setIsBookingModalOpen,
   customer, // customer object for distance calculation
   openReviewModal, 
+  token
 }) {
   const [mapCenter, setMapCenter] = useState(null);
   const [sortOption, setSortOption] = useState("distance");
   const [searchRadius, setSearchRadius] = useState(); // default 5 km radius
+   const [showChatModal, setShowChatModal] = useState(false);
+    const [showAdminChat, setShowAdminChat] = useState(false);
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -674,6 +683,35 @@ const filteredSortedServices = (servicesWithDistance || [])
             openReviewModal={openReviewModal}
           />
         ))}
+        {showAdminChat && (
+  <div
+    className="fixed bottom-20 right-6 sm:right-10 bg-white shadow-2xl rounded-2xl w-[29rem] max-w-[90vw] h-[36rem] border border-gray-200 p-4 flex flex-col z-50 transition-all duration-300"
+    style={{ transform: "translateY(0)" }}
+  >
+    <div className="flex justify-between items-center mb-2 border-b pb-2">
+      <h3 className="font-semibold text-gray-700 text-base">Chat with Admin</h3>
+      <button
+        onClick={() => setShowAdminChat(false)}
+        className="text-gray-500 hover:text-red-500 transition-colors"
+      >
+        <FiX size={20} />
+      </button>
+    </div>
+
+    {/* ChatComponent area */}
+    <div className="flex-1 overflow-hidden">
+      <ChatComponent token={token} receiverId={13} />
+    </div>
+  </div>
+)}
+
+{/* Floating Chat Button */}
+<button
+  onClick={() => setShowAdminChat(!showAdminChat)}
+  className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg z-50 transition-transform hover:scale-105"
+>
+  <FiMessageCircle size={24} />
+</button>
       </div>
     </div>
   );
@@ -880,6 +918,14 @@ function BookingsTab({ bookings, setBookings ,reviewsMap}) {
                 Verify & Complete
               </button>
             )}
+            {b.status?.toLowerCase() !== "cancelled" && (
+  <button
+    onClick={() => navigate(`/chat/${b.provider.id}`, { state: { provider: b.provider } })}
+    className="px-4 py-2 bg-[#6e290c] text-white rounded-lg hover:bg-[#a44a1d] transition"
+  >
+    Chat
+  </button>
+            )}
 
            {b.status?.toLowerCase() === "completed" && !reviewsMap[b.id] && (
   <button
@@ -889,14 +935,8 @@ function BookingsTab({ bookings, setBookings ,reviewsMap}) {
     Leave a Review
   </button>
 )}
-{b.status?.toLowerCase() !== "cancelled" && (
-  <button
-    onClick={() => navigate(`/chat/${b.provider.id}`, { state: { provider: b.provider } })}
-    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-  >
-    Chat
-  </button>
-)}
+
+
 
 
 

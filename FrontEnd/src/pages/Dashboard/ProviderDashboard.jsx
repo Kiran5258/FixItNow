@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser } from "react-icons/fi";
+import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser,FiMessageCircle,FiX,FiMessageSquare } from "react-icons/fi";
 import { BiClipboard } from "react-icons/bi";
 import { GiHammerNails } from "react-icons/gi";
 import { AiOutlineCheckCircle, AiOutlineRadiusSetting } from "react-icons/ai";
 import { FaRegLightbulb } from "react-icons/fa";
+import ChatComponent from "../../components/ChatComponent";
+import { useAuth } from "../../context/AuthContext";
+
+
+
 
 import {
   getMyProfile,
@@ -19,6 +24,7 @@ import {
   getReviewsByProvider,
   deleteReview,
   markBookingCompleteByProvider,
+  getAllUsers
   
 } from "../../services/api";
 import { Md18UpRating, MdReviews } from "react-icons/md";
@@ -35,6 +41,16 @@ export default function ProviderDashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [error, setError] = useState(false);
   const [reviews, setReviews] = useState([]);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [showAdminChat, setShowAdminChat] = useState(false); // for floating chat
+
+
+const [customers, setCustomers] = useState([]);
+const [selectedCustomer, setSelectedCustomer] = useState(null);
+const [token, setToken] = useState(localStorage.getItem("token"));
+
+
+
 
   
 
@@ -104,6 +120,21 @@ export default function ProviderDashboard() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+  const fetchCustomers = async () => {
+    try {
+      const response = await getAllUsers(); // admin endpoint that returns all users
+      // Filter only customers
+      const customerList = response.data.filter(user => user.role === "CUSTOMER");
+      setCustomers(customerList);
+    } catch (error) {
+      console.error("Failed to fetch customers:", error);
+    }
+  };
+  fetchCustomers();
+}, []);
+
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
@@ -159,6 +190,15 @@ export default function ProviderDashboard() {
               {item.icon} <span>{item.name}</span>
             </button>
           ))}
+            <button
+    onClick={() => setActiveTab("chat")}
+    className={`flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 text-white transition ${
+      activeTab === "chat" ? "bg-[#6e290c]" : ""
+    }`}
+  >
+    <FiMessageSquare /> Chat
+  </button>
+
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 p-3 rounded-lg mt-auto hover:bg-white/20 text-white border border-white/20"
@@ -255,6 +295,94 @@ export default function ProviderDashboard() {
   <ReviewsTab reviews={reviews}
    />
 )}
+{activeTab === "chat" && (
+  <div className="flex flex-col md:flex-row h-[90vh] bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+    {/* Left: Customer List */}
+    <div className="w-full md:w-1/3 bg-[#f7f3f1] border-r border-gray-300 p-4">
+      <h3 className="text-lg font-semibold text-[#6e290c] mb-4">Active Chats</h3>
+      <div className="space-y-2 overflow-y-auto h-[65vh]">
+        {customers.length > 0 ? (
+          customers.map((cust) => (
+            <button
+              key={cust.id}
+              onClick={() => setSelectedCustomer(cust)}
+              className={`w-full text-left px-4 py-2 rounded-lg transition-all ${
+                selectedCustomer?.id === cust.id
+                  ? "bg-[#6e290c] text-white font-semibold"
+                  : "hover:bg-[#ecdcd4] text-gray-800"
+              }`}
+            >
+              {cust.name}
+            </button>
+          ))
+        ) : (
+          <p className="text-gray-500 text-sm text-center mt-8">No active customers</p>
+        )}
+      </div>
+    </div>
+
+    {/* Right: Chat Window */}
+    <div className="flex-1 flex flex-col justify-center items-center bg-gray-50 p-4">
+      {selectedCustomer ? (
+        <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-xl shadow-sm p-4 h-[100vh] flex flex-col">
+          <div className="flex items-center justify-between border-b pb-3 mb-3">
+            <h2 className="text-lg font-semibold text-[#6e290c]">
+              Chat with {selectedCustomer.name}
+            </h2>
+            <button
+              onClick={() => setSelectedCustomer(null)}
+              className="text-gray-400 hover:text-red-500 transition"
+            >
+              ✕
+            </button>
+          </div>
+          <ChatComponent
+            token={token}
+            receiverId={selectedCustomer.id}
+            width="100%"
+            height="100%"
+            theme="provider"
+          />
+        </div>
+      ) : (
+        <div className="text-gray-500 text-center">
+          <FiMessageSquare className="mx-auto mb-3 text-4xl text-gray-400" />
+          <p>Select a customer to start chatting</p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+{/* Floating Chat Modal for Admin */}
+{showAdminChat && (
+  <div
+    className="fixed bottom-20 right-6 sm:right-10 bg-white shadow-2xl rounded-2xl w-[29rem] max-w-[90vw] h-[36rem] border border-gray-200 p-4 flex flex-col z-50 transition-all duration-300"
+    style={{ transform: "translateY(0)" }}
+  >
+    <div className="flex justify-between items-center mb-2 border-b pb-2">
+      <h3 className="font-semibold text-gray-700 text-base">Chat with Admin</h3>
+      <button
+        onClick={() => setShowAdminChat(false)}
+        className="text-gray-500 hover:text-red-500 transition-colors"
+      >
+        <FiX size={20} />
+      </button>
+    </div>
+
+    {/* ChatComponent area */}
+    <div className="flex-1 overflow-hidden">
+      <ChatComponent token={token} receiverId={13} />
+    </div>
+  </div>
+)}
+
+{/* Floating Chat Button */}
+<button
+  onClick={() => setShowAdminChat(!showAdminChat)}
+  className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg z-50 transition-transform hover:scale-105"
+>
+  <FiMessageCircle size={24} />
+</button>
 
 
       </main>

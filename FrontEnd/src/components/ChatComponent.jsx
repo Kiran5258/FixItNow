@@ -1,183 +1,288 @@
+// src/components/ChatComponent.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import {
+  FiSend,
+  FiUser,
+  FiWifi,
+  FiWifiOff,
+  FiMoreVertical,
+} from "react-icons/fi";
+import { sendMessageAPI, getMessagesWithUser } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import axios from "axios";
 
-const ChatComponent = ({ token, receiverId }) => {
+const ChatComponent = ({
+  receiverId,
+  receiverName: propReceiverName,
+  width = "420px",
+  height = "480px",
+  theme = "provider",
+}) => {
+  const { token, user } = useAuth();
+  const [receiverName, setReceiverName] = useState(propReceiverName || "");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [connected, setConnected] = useState(false);
-  const [error, setError] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
   const stompClientRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const typingTimeout = useRef(null);
 
-  // Auto-scroll to latest message
+  // Theme colors per role
+  const themeColors = {
+    admin: {
+      primary: "#2563eb",
+      gradient: "linear-gradient(135deg, #2563eb, #60a5fa)",
+    },
+    provider: {
+      primary: "#6e290c",
+      gradient: "linear-gradient(135deg, #6e290c, #b45309)",
+    },
+    customer: {
+      primary: "#16a34a",
+      gradient: "linear-gradient(135deg, #16a34a, #4ade80)",
+    },
+  };
+  const { primary, gradient } = themeColors[theme] || themeColors.provider;
+
+  // Auto scroll to bottom on new message
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Fetch receiver name if missing
   useEffect(() => {
-    if (!token || !receiverId) return;
-
-    const connectStomp = () => {
-      console.log("🔹 Connecting STOMP...");
-
-      const stompClient = new Client({
-        webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
-        connectHeaders: { Authorization: `Bearer ${token}` },
-        debug: (str) => console.log("🪵 STOMP DEBUG:", str),
-        reconnectDelay: 5000,
-        heartbeatIncoming: 10000,
-        heartbeatOutgoing: 10000,
-      });
-
-      stompClient.onConnect = async (frame) => {
-        console.log("✅ STOMP connected:", frame.headers);
-        setConnected(true);
-        setError(null);
-
-        // Fetch previous messages after connection
-        try {
-          const res = await fetch(
-            `http://localhost:8080/api/messages/between/${receiverId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          const data = await res.json();
-          console.log("📜 Previous messages:", data);
-          setMessages(data);
-        } catch (err) {
-          console.error("❌ Failed to fetch previous messages:", err);
-        }
-
-        // Subscribe to real-time messages
-        stompClient.subscribe(`/user/queue/messages`, (message) => {
-          try {
-            const msgBody = JSON.parse(message.body);
-            // Only add messages relevant to this chat
-            if (
-              msgBody.senderId === receiverId ||
-              msgBody.receiverId === receiverId
-            ) {
-              setMessages((prev) => [...prev, msgBody]);
-            }
-          } catch (e) {
-            console.error("❌ Failed to parse incoming message:", e);
-          }
-        });
-
-        console.log("📥 Subscribed to /user/queue/messages");
-      };
-
-      stompClient.onStompError = (frame) => {
-        console.error("❌ STOMP error:", frame.headers["message"]);
-        setError(frame.headers["message"] || "STOMP error");
-        setConnected(false);
-      };
-
-      stompClient.onWebSocketClose = () => {
-        console.warn("⚠️ WebSocket closed");
-        setConnected(false);
-      };
-
-      stompClient.onWebSocketError = (evt) => {
-        console.error("❌ WebSocket error:", evt);
-        setError("WebSocket error");
-        setConnected(false);
-      };
-
-      stompClient.activate();
-      stompClientRef.current = stompClient;
-    };
-
-    connectStomp();
-
-    return () => {
-      if (stompClientRef.current) {
-        console.log("🔹 Deactivating STOMP client");
-        stompClientRef.current.deactivate();
-        stompClientRef.current = null;
+    if (!receiverId || propReceiverName || !token) return;
+    const fetchReceiverName = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8080/api/users/id/${receiverId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setReceiverName(res.data?.name || "Unknown User");
+      } catch {
+        setReceiverName("Unknown User");
       }
     };
-  }, [token, receiverId]);
+    fetchReceiverName();
+  }, [receiverId, token, propReceiverName]);
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
+  // Fetch previous chat messages
+  useEffect(() => {
+    
+    if (!token || !receiverId || !user?.id) return;
+    getMessagesWithUser(receiverId)
+      .then((res) => {
+        const msgs = res.data || [];
+        setMessages(msgs);
+        if (!receiverName && msgs.length > 0) {
+          const other = msgs.find((m) => m.senderId === receiverId);
+          if (other?.senderName) setReceiverName(other.senderName);
+        }
+      })
+      .catch((err) => console.error("❌ Error loading chat:", err));
+  }, [receiverId, token]);
 
-    const client = stompClientRef.current;
-    if (!client || !client.active) {
-      console.warn("❌ STOMP client not connected, message not sent");
-      return;
-    }
+  // Setup WebSocket
+  useEffect(() => {
+    if (!token || !user?.id) return;
 
-    const message = {
-      receiverId: receiverId,
-      content: input,
-    };
-
-    console.log("📝 Sending message:", message);
-
-    // Publish message to backend
-    client.publish({
-      destination: "/app/chat.sendMessage",
-      body: JSON.stringify(message),
-      headers: { Authorization: `Bearer ${token}` },
+    const socket = new SockJS("http://localhost:8080/ws");
+    const client = new Client({
+      webSocketFactory: () => socket,
+      connectHeaders: { Authorization: `Bearer ${token}` },
+      reconnectDelay: 5000,
+      onConnect: () => {
+        setConnected(true);
+        client.subscribe("/user/queue/messages", (frame) => {
+          const msg = JSON.parse(frame.body);
+          if (
+            msg.senderId === receiverId ||
+            msg.receiverId === receiverId
+          ) {
+            setMessages((prev) => [...prev, msg]);
+          }
+        });
+      },
+      onDisconnect: () => setConnected(false),
+      onWebSocketClose: () => setConnected(false),
     });
 
-    // Append message locally for instant feedback
-    setMessages((prev) => [
-      ...prev,
-      {
-        senderId: "me",
-        senderName: "You",
-        receiverId,
-        content: input,
-      },
-    ]);
+    client.activate();
+    stompClientRef.current = client;
 
-    setInput("");
+    return () => {
+      client.deactivate();
+      setConnected(false);
+    };
+  }, [token, user, receiverId]);
+
+  // Handle typing input
+  const handleTyping = (e) => {
+    setInput(e.target.value);
+    setIsTyping(true);
+    clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => setIsTyping(false), 1500);
   };
 
-  return (
-    <div style={{ border: "1px solid gray", padding: "1rem", width: "400px" }}>
+  // Send message
+  const sendMessage = async () => {
+    if (!input.trim() || !receiverId) return;
+    const msgContent = input.trim();
+
+    const optimistic = {
+      id: `temp-${Date.now()}`,
+      senderId: user?.id,
+      receiverId,
+      content: msgContent,
+      senderName: user?.name || "You",
+      sentAt: new Date().toISOString(),
+      temp: true,
+    };
+
+    setMessages((prev) => [...prev, optimistic]);
+    setInput("");
+
+    const client = stompClientRef.current;
+    try {
+      if (client?.connected) {
+        client.publish({
+          destination: "/app/chat.sendMessage",
+          body: JSON.stringify({ receiverId, content: msgContent }),
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        await sendMessageAPI({ receiverId, content: msgContent });
+      }
+    } catch (err) {
+      console.error("❌ Message send failed:", err);
+    }
+  };
+
+  // Render message bubble
+  const renderMessageRow = (msg, i) => {
+    const isSender = String(msg.senderId) === String(user?.id);
+    return (
       <div
-        style={{
-          height: "300px",
-          overflowY: "auto",
-          marginBottom: "1rem",
-          border: "1px solid #ccc",
-          padding: "0.5rem",
-        }}
+        key={msg.id || i}
+        className={`flex mb-2 items-end ${
+          isSender ? "justify-end" : "justify-start"
+        }`}
       >
-        {messages.map((msg, idx) => (
-          <div key={idx}>
-            <b>You :</b> {msg.content}
+        {/* Left avatar (receiver messages) */}
+        {!isSender && (
+          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-2">
+            <FiUser className="text-gray-600" />
           </div>
-        ))}
-        <div ref={messagesEndRef} />
+        )}
+
+        {/* Message bubble */}
+        <div
+          className={`px-3 py-2 rounded-2xl max-w-[75%] text-sm leading-snug break-words shadow ${
+            isSender ? "text-white" : "bg-gray-100 text-gray-900"
+          }`}
+          style={{
+            background: isSender ? gradient : undefined,
+            borderRadius: isSender
+              ? "18px 18px 0 18px"
+              : "18px 18px 18px 0",
+          }}
+        >
+          {msg.content}
+          <div className="text-[10px] mt-1 opacity-70 text-right">
+            {new Date(msg.sentAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+        </div>
+
+        {/* Right spacer for sender */}
+        {isSender && <div className="w-3" />}
+      </div>
+    );
+  };
+
+  const isAdmin = theme === "admin";
+  const adminWidth = "620px";
+  const adminHeight = "800px";
+
+  return (
+    <div
+      className={`rounded-2xl shadow-lg flex flex-col bg-white border border-gray-200 overflow-hidden ${
+        isAdmin ? "text-[13px]" : ""
+      }`}
+      style={{
+        width: isAdmin ? adminWidth : width,
+        height: isAdmin ? adminHeight : height,
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-3 py-2 text-white shadow"
+        style={{ background: gradient }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 bg-white/25 rounded-full flex items-center justify-center">
+            <FiUser size={16} />
+          </div>
+          <div>
+            <p className="font-semibold text-sm">
+              {receiverName || "Loading..."}
+            </p>
+            <p className="text-white/80 flex items-center gap-1 text-xs">
+              {connected ? (
+                <>
+                  <FiWifi size={10} /> Online
+                </>
+              ) : (
+                <>
+                  <FiWifiOff size={10} /> Offline
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+        {!isAdmin && (
+          <FiMoreVertical className="cursor-pointer hover:text-white/80" />
+        )}
       </div>
 
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Type a message..."
-        style={{ width: "80%" }}
-      />
-      <button
-        onClick={sendMessage}
-        style={{ width: "18%", marginLeft: "2%" }}
-        disabled={!connected}
-      >
-        Send
-      </button>
+      {/* Messages container */}
+      {(!user?.id || messages.length === 0) ? (
+  <p className="text-gray-400 text-center mt-6 text-sm">
+    {user?.id ? "No messages yet. Start chatting!" : "Loading chat..."}
+  </p>
+) : (
+  messages.map((m, i) => renderMessageRow(m, i))
+)}
 
-      {!connected && (
-        <div style={{ color: "red", marginTop: "0.5rem" }}>Connecting...</div>
-      )}
-      {error && (
-        <div style={{ color: "orange", marginTop: "0.5rem" }}>Error: {error}</div>
-      )}
+
+      {/* Input area */}
+      <div className="flex items-center gap-2 border-t p-3 bg-white">
+        <input
+          type="text"
+          value={input}
+          onChange={handleTyping}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          placeholder="Type a message..."
+          className="flex-grow px-3 py-2 border rounded-full bg-gray-50 focus:outline-none text-sm"
+          style={{ borderColor: primary }}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={!connected}
+          className="p-2 rounded-full text-white shadow-md hover:scale-105 transition"
+          style={{
+            backgroundColor: connected ? primary : "#9ca3af",
+          }}
+        >
+          <FiSend size={16} />
+        </button>
+      </div>
     </div>
   );
 };

@@ -1,5 +1,7 @@
 package infosys.backend.config;
 
+import infosys.backend.security.JwtUtil;
+import infosys.backend.service.PresenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
@@ -13,8 +15,10 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import infosys.backend.security.JwtUtil;
 import org.springframework.security.core.Authentication;
 
 @Configuration
@@ -23,19 +27,20 @@ import org.springframework.security.core.Authentication;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtUtil jwtUtil;
+    private final PresenceService presenceService;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("http://localhost:5173") // frontend URL
+                .setAllowedOriginPatterns("http://localhost:5173")
                 .withSockJS();
     }
 
     @Override
     public void configureMessageBroker(@NonNull MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/topic", "/queue"); // /queue for private messages
+        registry.enableSimpleBroker("/topic", "/queue");
         registry.setApplicationDestinationPrefixes("/app");
-        registry.setUserDestinationPrefix("/user"); // for one-to-one chat
+        registry.setUserDestinationPrefix("/user");
     }
 
     @Override
@@ -45,27 +50,34 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             public Message<?> preSend(Message<?> message, MessageChannel channel) {
                 StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
-                // Handle CONNECT frame
                 if (StompCommand.CONNECT.equals(accessor.getCommand())) {
                     String token = accessor.getFirstNativeHeader("Authorization");
                     if (token != null && token.startsWith("Bearer ")) {
                         token = token.substring(7);
                         try {
-                            Authentication auth = jwtUtil.getAuthentication(token); // validate JWT
-                            accessor.setUser(auth); // attach authenticated user
-                            System.out.println("✅ WebSocket user attached: " + auth.getName());
+                            Authentication auth = jwtUtil.getAuthentication(token);
+                            accessor.setUser(auth);
+                            Long userId = ((infosys.backend.model.User) auth.getPrincipal()).getId();
+                            presenceService.userConnected(userId);
+                            System.out.println("✅ WebSocket connected: " + auth.getName());
                         } catch (Exception e) {
                             System.out.println("❌ Invalid JWT token: " + e.getMessage());
                         }
                     }
                 }
 
-                Authentication auth = (Authentication) accessor.getUser();
-                System.out.println("Frame=" + accessor.getCommand() +
-                        ", user=" + (auth != null ? auth.getName() : "null"));
-
                 return message;
             }
         });
+    }
+
+    // Handle user disconnects
+    @EventListener
+    public void handleSessionDisconnect(SessionDisconnectEvent event) {
+        StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
+        Authentication auth = (Authentication) sha.getUser();
+        if (auth != null && auth.getPrincipal() instanceof infosys.backend.model.User user) {
+            presenceService.userDisconnected(user.getId());
+        }
     }
 }
