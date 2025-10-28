@@ -489,7 +489,7 @@ function AdminChatSection({ users }) {
   );
 
   return (
-    <div className="flex flex-col md:flex-row  h-[95vh] bg-white rounded-xl shadow-lg border border-[#6e290c30] overflow-hidden">
+    <div className="flex flex-col md:flex-row  h-[90vh] bg-white rounded-xl shadow-lg border border-[#6e290c30] overflow-hidden">
       {/* User List Sidebar */}
       <div className="md:w-1/3 w-full bg-[#fff8f4] border-r border-[#6e290c30] overflow-y-auto" >
         <div className="sticky top-0 bg-[#6e290c] text-white p-4 font-semibold text-lg flex items-center justify-between" >
@@ -542,19 +542,12 @@ function AdminChatSection({ users }) {
       </div>
 
      {/* Right panel: Chat area */}
-<div className="flex-1 flex flex-col bg-white h-[32rem]">
+<div className="flex-1 flex flex-col bg-white h-[30rem]">
   <div className="flex flex-col flex-grow border-l border-[#6e290c30]">
     {selectedUser ? (
       <>
         {/* Header */}
-        <div className="flex justify-between items-center bg-white px-5 py-3 border-b border-[#6e290c30]">
-          <div>
-            <h2 className="text-lg font-semibold text-[#6e290c]">
-              Chat with {selectedUser.name}
-            </h2>
-            <p className="text-sm text-gray-500">{selectedUser.role}</p>
-          </div>
-        </div>
+        
 
         {/* ChatComponent — full height below header */}
         <div className="flex-1 h-96">

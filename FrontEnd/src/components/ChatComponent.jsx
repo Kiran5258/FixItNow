@@ -16,8 +16,8 @@ import axios from "axios";
 const ChatComponent = ({
   receiverId,
   receiverName: propReceiverName,
-  width = "420px",
-  height = "480px",
+  width = "620px",
+  height = "580px",
   theme = "provider",
 }) => {
   const { token, user } = useAuth();
@@ -49,7 +49,6 @@ const ChatComponent = ({
 
   // Auto scroll to bottom on new message
   useEffect(() => {
-    
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -72,7 +71,6 @@ const ChatComponent = ({
 
   // Fetch previous chat messages
   useEffect(() => {
-    
     if (!token || !receiverId || !user?.id) return;
     getMessagesWithUser(receiverId)
       .then((res) => {
@@ -87,38 +85,63 @@ const ChatComponent = ({
   }, [receiverId, token]);
 
   // Setup WebSocket
-  useEffect(() => {
-    if (!token || !user?.id) return;
+  // Setup WebSocket
+useEffect(() => {
+  if (!token || !user?.id) return;
 
-    const socket = new SockJS("http://localhost:8080/ws");
-    const client = new Client({
-      webSocketFactory: () => socket,
-      connectHeaders: { Authorization: `Bearer ${token}` },
-      reconnectDelay: 5000,
-      onConnect: () => {
-        setConnected(true);
-        client.subscribe("/user/queue/messages", (frame) => {
-          const msg = JSON.parse(frame.body);
-          if (
-            msg.senderId === receiverId ||
-            msg.receiverId === receiverId
-          ) {
-            setMessages((prev) => [...prev, msg]);
+  const client = new Client({
+    webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+    connectHeaders: {
+      Authorization: `Bearer ${token}`, // ✅ Send token in CONNECT frame
+    },
+    reconnectDelay: 5000,
+    debug: (msg) => console.log(msg), // optional
+    onConnect: (frame) => {
+      console.log("✅ STOMP connected:", frame);
+      setConnected(true);
+
+      // ✅ Subscribe to private user queue
+      client.subscribe(
+        "/user/queue/messages",
+        (message) => {
+          try {
+            const msg = JSON.parse(message.body);
+            console.log("📩 Received message:", msg);
+
+            // Only add if related to this chat
+            if (msg.senderId === receiverId || msg.receiverId === receiverId) {
+              setMessages((prev) => [...prev, msg]);
+            }
+          } catch (err) {
+            console.error("❌ Error parsing incoming message:", err);
           }
-        });
-      },
-      onDisconnect: () => setConnected(false),
-      onWebSocketClose: () => setConnected(false),
-    });
-
-    client.activate();
-    stompClientRef.current = client;
-
-    return () => {
-      client.deactivate();
+        },
+        {
+          Authorization: `Bearer ${token}`, // ✅ Include header for good measure
+        }
+      );
+    },
+    onStompError: (frame) => {
+      console.error("❌ STOMP error:", frame);
+    },
+    onWebSocketError: (err) => {
+      console.error("❌ WebSocket error:", err);
+    },
+    onDisconnect: () => {
+      console.log("⚠️ STOMP disconnected");
       setConnected(false);
-    };
-  }, [token, user, receiverId]);
+    },
+  });
+
+  client.activate();
+  stompClientRef.current = client;
+
+  return () => {
+    client.deactivate();
+    setConnected(false);
+  };
+}, [token, user?.id, receiverId]);
+
 
   // Handle typing input
   const handleTyping = (e) => {
@@ -172,16 +195,13 @@ const ChatComponent = ({
           isSender ? "justify-end" : "justify-start"
         }`}
       >
-        {/* Left avatar (receiver messages) */}
         {!isSender && (
           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-2">
             <FiUser className="text-gray-600" />
           </div>
         )}
-
-        {/* Message bubble */}
         <div
-          className={`px-3 py-2 rounded-2xl max-w-[75%] text-sm leading-snug break-words shadow ${
+          className={`px-3 py-2 rounded-2xl max-w-[100%] text-sm leading-snug break-words shadow ${
             isSender ? "text-white" : "bg-gray-100 text-gray-900"
           }`}
           style={{
@@ -199,91 +219,109 @@ const ChatComponent = ({
             })}
           </div>
         </div>
-
-        {/* Right spacer for sender */}
         {isSender && <div className="w-3" />}
       </div>
     );
   };
 
+  // Theme-based sizing
   const isAdmin = theme === "admin";
-  const adminWidth = "620px";
-  const adminHeight = "800px";
+  const isCustomer = theme === "customer";
+
+  const adminWidth = "600px";
+  const adminHeight = "600px";
+
+  const customerWidth = "500px";
+  const customerHeight = "520px";
 
   return (
+  <div
+    className={`rounded-2xl shadow-lg flex flex-col bg-white border border-gray-200  ${
+      isAdmin ? "text-[13px]" : ""
+    }`}
+    style={{
+      width: isAdmin
+        ? adminWidth
+        : isCustomer
+        ? customerWidth
+        : width,
+      height: isAdmin
+        ? adminHeight
+        : isCustomer
+        ? customerHeight
+        : height,
+      maxWidth: "95vw",
+      maxHeight: "85vh",
+    }}
+  >
+    {/* Header - stays visible */}
     <div
-      className={`rounded-2xl shadow-lg flex flex-col bg-white border border-gray-200 overflow-hidden ${
-        isAdmin ? "text-[13px]" : ""
-      }`}
-      style={{
-        width: isAdmin ? adminWidth : width,
-        height: isAdmin ? adminHeight : height,
-      }}
+      className="flex items-center justify-between px-3 py-2 text-white shadow sticky top-0 z-10"
+      style={{ background: gradient }}
     >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-3 py-2 text-white shadow"
-        style={{ background: gradient }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 bg-white/25 rounded-full flex items-center justify-center">
-            <FiUser size={16} />
-          </div>
-          <div>
-            <p className="font-semibold text-sm">
-              {receiverName || "Loading..."}
-            </p>
-            <p className="text-white/80 flex items-center gap-1 text-xs">
-              {connected ? (
-                <>
-                  <FiWifi size={10} /> Online
-                </>
-              ) : (
-                <>
-                  <FiWifiOff size={10} /> Offline
-                </>
-              )}
-            </p>
-          </div>
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 bg-white/25 rounded-full flex items-center justify-center">
+          <FiUser size={16} />
         </div>
-        {!isAdmin && (
-          <FiMoreVertical className="cursor-pointer hover:text-white/80" />
-        )}
+        <div>
+          <p className="font-semibold text-sm">
+            Chat with {receiverName || "Loading..."}
+          </p>
+          <p className="text-white/80 flex items-center gap-1 text-xs">
+            {connected ? (
+              <>
+                <FiWifi size={10} /> Online
+              </>
+            ) : (
+              <>
+                <FiWifiOff size={10} /> Offline
+              </>
+            )}
+          </p>
+        </div>
       </div>
-
-      {/* Messages container */}
-      {(!user?.id || messages.length === 0) ? (
-  <p className="text-gray-400 text-center mt-6 text-sm">
-    {user?.id ? "No messages yet. Start chatting!" : "Loading chat..."}
-  </p>
-) : (
-  messages.map((m, i) => renderMessageRow(m, i))
-)}
-
-
-      {/* Input area */}
-      <div className="flex items-center gap-2 border-t p-3 bg-white">
-        <input
-          type="text"
-          value={input}
-          onChange={handleTyping}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type a message..."
-          className="flex-grow px-3 py-2 border rounded-full bg-gray-50 focus:outline-none text-sm"
-          style={{ borderColor: primary }}
-        />
-        <button
-          onClick={sendMessage}
-          disabled={!connected}
-          className="p-2 rounded-full text-white shadow-md hover:scale-105 transition"
-          style={{
-            backgroundColor: connected ? primary : "#9ca3af",
-          }}
-        >
-          <FiSend size={16} />
-        </button>
-      </div>
+      {!isAdmin && (
+        <FiMoreVertical className="cursor-pointer hover:text-white/80" />
+      )}
     </div>
+
+    {/* Messages - scrollable only in this section */}
+    <div className="flex-1 overflow-y-auto px-3 py-4 scroll-smooth bg-gray-50">
+      {(!user?.id || messages.length === 0) ? (
+        <p className="text-gray-400 text-center mt-6 text-sm">
+          {user?.id ? "No messages yet. Start chatting!" : "Loading chat..."}
+        </p>
+      ) : (
+        messages.map((m, i) => renderMessageRow(m, i))
+      )}
+      <div ref={messagesEndRef} />
+    </div>
+
+    {/* Input box fixed at bottom */}
+    <div className="flex items-center gap-2 border-t p-3 bg-white sticky bottom-0">
+      <input
+        type="text"
+        value={input}
+        onChange={handleTyping}
+        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        placeholder="Type a message..."
+        className="flex-grow px-3 py-2 border rounded-full bg-gray-50 focus:outline-none text-sm"
+        style={{ borderColor: primary }}
+      />
+      <button
+        onClick={sendMessage}
+        disabled={!connected}
+        className="p-2 rounded-full text-white shadow-md hover:scale-105 transition"
+        style={{
+          backgroundColor: connected ? primary : "#9ca3af",
+        }}
+      >
+        <FiSend size={16} />
+      </button>
+    </div>
+  </div>
+
+
   );
 };
 

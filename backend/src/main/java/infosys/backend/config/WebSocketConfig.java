@@ -28,6 +28,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtUtil jwtUtil;
     private final PresenceService presenceService;
+    private final JwtChannelInterceptor jwtChannelInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -44,32 +45,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     @Override
-    public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(new ChannelInterceptor() {
-            @Override
-            public Message<?> preSend(Message<?> message, MessageChannel channel) {
-                StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
+public void configureClientInboundChannel(ChannelRegistration registration) {
+    registration.interceptors(jwtChannelInterceptor); // ✅ use the dedicated interceptor
+}
 
-                if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    String token = accessor.getFirstNativeHeader("Authorization");
-                    if (token != null && token.startsWith("Bearer ")) {
-                        token = token.substring(7);
-                        try {
-                            Authentication auth = jwtUtil.getAuthentication(token);
-                            accessor.setUser(auth);
-                            Long userId = ((infosys.backend.model.User) auth.getPrincipal()).getId();
-                            presenceService.userConnected(userId);
-                            System.out.println("✅ WebSocket connected: " + auth.getName());
-                        } catch (Exception e) {
-                            System.out.println("❌ Invalid JWT token: " + e.getMessage());
-                        }
-                    }
-                }
-
-                return message;
-            }
-        });
-    }
 
     // Handle user disconnects
     @EventListener

@@ -698,11 +698,12 @@ const filteredSortedServices = (servicesWithDistance || [])
       </button>
     </div>
 
-    {/* ChatComponent area */}
-    <div className="flex-1 overflow-hidden">
-      <ChatComponent token={token} receiverId={13} />
-    </div>
+    <div className="flex justify-center items-center w-full h-full overflow-auto">
+  <div className="flex justify-center items-center w-full max-w-[90vw]">
+    <ChatComponent token={token} receiverId={13} theme={"admin"} />
   </div>
+</div>
+</div>
 )}
 
 {/* Floating Chat Button */}
