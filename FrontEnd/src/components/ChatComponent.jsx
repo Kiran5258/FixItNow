@@ -6,6 +6,8 @@ import { FiSend, FiUser, FiWifi, FiWifiOff } from "react-icons/fi";
 import { sendMessageAPI, getMessagesWithUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const ChatComponent = ({
   receiverId,
@@ -22,9 +24,6 @@ const ChatComponent = ({
   const stompClientRef = useRef(null);
   const messagesEndRef = useRef(null);
   const typingTimeout = useRef(null);
-    // ✅ Keep track of the latest receiverId (prevents stale value in WebSocket callback)
-  
-
 
   const themeColors = {
     admin: { primary: "#2563eb", gradient: "linear-gradient(135deg, #2563eb, #60a5fa)" },
@@ -33,12 +32,12 @@ const ChatComponent = ({
   };
   const { primary, gradient } = themeColors[theme] || themeColors.provider;
 
-  // debug - show auth + props
+  // Debug info
   useEffect(() => {
     console.log("🔎 ChatComponent init", { tokenPresent: !!token, user, receiverId });
   }, [token, user, receiverId]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     if (messages.length > 0) {
@@ -52,10 +51,9 @@ const ChatComponent = ({
     if (!receiverId || propReceiverName || !token) return;
     const fetchReceiverName = async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:8080/api/users/id/${receiverId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await axios.get(`http://localhost:8080/api/users/id/${receiverId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setReceiverName(res.data?.name || "Unknown User");
       } catch (err) {
         console.error("❌ fetchReceiverName error:", err);
@@ -65,7 +63,7 @@ const ChatComponent = ({
     fetchReceiverName();
   }, [receiverId, token, propReceiverName]);
 
-  // Load previous messages with current user
+  // Load previous messages
   useEffect(() => {
     if (!token || !receiverId || !user?.id) return;
     console.log("🔁 Fetching messages with user", receiverId);
@@ -76,7 +74,7 @@ const ChatComponent = ({
       .catch((err) => console.error("❌ Error loading chat:", err));
   }, [receiverId, token, user?.id]);
 
-  // ✅ WebSocket setup — pure WebSocket (no polling)
+  // ✅ WebSocket setup
   useEffect(() => {
     if (!token || !user?.email) {
       console.log("⏳ Waiting for auth before opening WS (token/email missing)");
@@ -108,13 +106,12 @@ const ChatComponent = ({
               const msgSenderId = String(msg.senderId ?? "");
               const msgReceiverId = String(msg.receiverId ?? "");
 
-              // If message belongs to the currently open chat → add/replace
+              // ✅ If message belongs to this chat
               if (msgSenderId === currentChatId || msgReceiverId === currentChatId) {
                 console.log(`📨 Message belongs to current chat (${currentChatId}), updating state`);
                 setMessages((prev) => {
                   let replaced = false;
                   const next = prev.map((m) => {
-                    // replace optimistic message if same content or id match
                     if ((m.temp && m.content === msg.content) || (m.id && msg.id && String(m.id) === String(msg.id))) {
                       replaced = true;
                       return { ...msg };
@@ -125,8 +122,21 @@ const ChatComponent = ({
                   return next;
                 });
               } else {
-                // message for another chat (you can show notification here)
-                console.log("📬 Incoming for other chat — ignoring in this view:", msg);
+                // ✅ Incoming message from another chat → show notification
+                console.log("📬 Incoming for other chat — showing notification:", msg);
+                toast.info(`💬 New message from ${msg.senderName || "Unknown"}: ${msg.content}`, {
+                  position: "bottom-right",
+                  autoClose: 4000,
+                  hideProgressBar: false,
+                  closeOnClick: true,
+                  pauseOnHover: true,
+                  draggable: true,
+                  theme: "colored",
+                });
+
+                // 🔔 Optional sound notification
+                const audio = new Audio("/notification.mp3");
+                audio.play().catch(() => {});
               }
             } catch (err) {
               console.error("❌ Error parsing WS message:", err);
@@ -134,20 +144,13 @@ const ChatComponent = ({
           },
           { Authorization: `Bearer ${token}` }
         );
-
-        // optional: also subscribe temporarily to a test topic if you want debugging
-        // client.subscribe("/topic/test", (m) => console.log("TEST topic:", m.body));
       },
-      onStompError: (frame) => {
-        console.error("❌ STOMP error:", frame);
-      },
+      onStompError: (frame) => console.error("❌ STOMP error:", frame),
       onDisconnect: () => {
         console.warn("⚠️ STOMP disconnected");
         setConnected(false);
       },
-      onWebSocketError: (err) => {
-        console.error("❌ WebSocket error:", err);
-      },
+      onWebSocketError: (err) => console.error("❌ WebSocket error:", err),
     });
 
     client.activate();
@@ -167,24 +170,21 @@ const ChatComponent = ({
     typingTimeout.current = setTimeout(() => {}, 1500);
   };
 
-  // ✅ Send message (uses prop receiverId)
+  // ✅ Send message
   const sendMessage = async () => {
     if (!input.trim() || !user?.id) return;
-
     const msgContent = input.trim();
     setInput("");
 
-    // optimistic message (shows immediately)
     const optimistic = {
       id: `temp-${Date.now()}`,
       senderId: user.id,
-      receiverId: receiverId, // IMPORTANT: use prop
+      receiverId,
       content: msgContent,
       senderName: user.name || "You",
       sentAt: new Date().toISOString(),
       temp: true,
     };
-
     setMessages((prev) => [...prev, optimistic]);
 
     try {
@@ -196,25 +196,19 @@ const ChatComponent = ({
           body: JSON.stringify({ receiverId, content: msgContent }),
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log("✅ Message sent via WebSocket");
       } else {
         console.log("🌐 WebSocket not connected, sending via REST API...");
         await sendMessageAPI({ receiverId, content: msgContent });
-        console.log("✅ Message sent via REST fallback");
       }
     } catch (err) {
       console.error("❌ Send failed:", err);
     }
   };
 
-  // Render message row
   const renderMessageRow = (msg, i) => {
     const isSender = String(msg.senderId) === String(user?.id);
     return (
-      <div
-        key={msg.id || i}
-        className={`flex mb-2 items-end ${isSender ? "justify-end" : "justify-start"}`}
-      >
+      <div key={msg.id || i} className={`flex mb-2 items-end ${isSender ? "justify-end" : "justify-start"}`}>
         {!isSender && (
           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-2">
             <FiUser className="text-gray-600" />
@@ -231,40 +225,23 @@ const ChatComponent = ({
         >
           {msg.content}
           <div className="text-[10px] mt-1 opacity-70 text-right">
-            {new Date(msg.sentAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {new Date(msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </div>
         </div>
       </div>
     );
   };
 
-  // Layout
-  // ✅ Adjust height dynamically for each user type (theme)
-const chatHeight =
-  theme === "admin"
-    ? "520px" // smaller for admin
-    : theme === "provider"
-    ? "640px" // default
-    : "640px"; // customer
+  const chatHeight =
+    theme === "admin" ? "520px" : theme === "provider" ? "640px" : "640px";
 
   return (
     <div
       className="rounded-2xl shadow-lg flex flex-col bg-white border border-gray-200"
-      style={{
-        width,
-        height: chatHeight,
-        maxWidth: "95vw",
-        maxHeight: "85vh",
-      }}
+      style={{ width, height: chatHeight, maxWidth: "95vw", maxHeight: "85vh" }}
     >
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-3 py-2 text-white shadow sticky top-0 z-10"
-        style={{ background: gradient }}
-      >
+      <div className="flex items-center justify-between px-3 py-2 text-white shadow sticky top-0 z-10" style={{ background: gradient }}>
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 bg-white/25 rounded-full flex items-center justify-center">
             <FiUser size={16} />
@@ -285,7 +262,6 @@ const chatHeight =
           </div>
         </div>
       </div>
-      <br></br>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-4 scroll-smooth bg-gray-50">
@@ -319,6 +295,9 @@ const chatHeight =
           <FiSend size={16} />
         </button>
       </div>
+
+      {/* Toast Notification Container */}
+      <ToastContainer />
     </div>
   );
 };
