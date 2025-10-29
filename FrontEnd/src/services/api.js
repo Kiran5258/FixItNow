@@ -100,3 +100,7 @@ export const updateReview = (reviewId, reviewData) =>
 export const deleteReview =  (reviewId) => {
   API.delete(`/reviews/${reviewId}`);
 };
+
+export const getReviewByBookingId = (bookingId) => {
+  return axios.get(`/api/reviews/booking/${bookingId}`);
+};

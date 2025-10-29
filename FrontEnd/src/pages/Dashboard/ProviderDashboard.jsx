@@ -684,7 +684,7 @@ console.log("Booking ID:", b.id, "BookingDateTime:", bookingDateTime, "Now:", no
               {/* Confirmed Booking => Mark as Completed */}
               {showMarkCompleteBtn && (
                 <button
-                  className="flex-1 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition mt-2"
+                  className="px-4 py-2 bg-[#6e290c] text-white rounded-lg hover:bg-[#a44a1d] transition"
                   onClick={() => handleMarkComplete(b.id)}
                 >
                   Mark as Completed

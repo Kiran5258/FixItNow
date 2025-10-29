@@ -173,68 +173,62 @@ function BookingModal({ service, customer, onClose }) {
   );
 }
 
-function AddReviewSection({ user, providerId, bookingId, selectedService, newReview, setNewReview, handleSubmitReview }) {
+
+  function AddReviewSection({ user, providerId, bookingId, selectedService, newReview, setNewReview, handleSubmitReview, hasCompletedBooking, setHasCompletedBooking ,alreadyReviewed,
+  setAlreadyReviewed}) {
   const { token } = useAuth();
-  const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
   const [loading, setLoading] = useState(true);
+ 
+  
 
- useEffect(() => {
-  const checkCompletedBooking = async () => {
-    if (!bookingId || !token) {
-      setHasCompletedBooking(false);
-      setLoading(false);
-      return;
-    }
 
-    try {
-      const res = await fetch(`http://localhost:8080/api/bookings/${bookingId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!res.ok) {
-        setHasCompletedBooking(false);
+  // Existing useEffect stays the same to check booking status
+  useEffect(() => {
+    const checkCompletedBooking = async () => {
+      if (!bookingId || !token) {
+        setLoading(false);
         return;
       }
+      try {
+        const res = await fetch(`http://localhost:8080/api/bookings/${bookingId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return setLoading(false);
+        const booking = await res.json();
 
-      const booking = await res.json();
+        const reviewRes = await fetch(
+          `http://localhost:8080/api/reviews/booking/${bookingId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-      // ✅ Check if already reviewed
-      const existingReviewRes = await fetch(
-        `http://localhost:8080/api/reviews/booking/${bookingId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const existingReview = existingReviewRes.ok ? await existingReviewRes.json() : null;
+        let existingReview = null;
+        if (reviewRes.status === 204) existingReview = null;
+        else if (reviewRes.ok) existingReview = await reviewRes.json();
 
-      const completed =
-        booking.status?.toUpperCase() === "COMPLETED" &&
-        booking.provider?.id === providerId &&
-        !existingReview; // ✅ allow only if not reviewed
+        setHasCompletedBooking(
+  booking.status?.toUpperCase() === "COMPLETED" &&
+  booking.provider?.id === providerId
+);
+setAlreadyReviewed(existingReview !== null);
 
-      setHasCompletedBooking(completed);
-    } catch (err) {
-      console.error("Error fetching booking:", err);
-      setHasCompletedBooking(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (user?.id && providerId) checkCompletedBooking();
-}, [user, providerId, bookingId, selectedService?.id]);
+    if (user?.id && providerId) checkCompletedBooking();
+  }, [user, providerId, bookingId, selectedService?.id]);
 
-
-
-
-
-  if (loading) return <p className="text-center text-gray-400 animate-pulse mt-4">Checking booking status...</p>;
-
+  if (loading)
+    return <p className="text-center text-gray-400 animate-pulse mt-4">Checking booking status...</p>;
+const canReview = hasCompletedBooking && !alreadyReviewed;
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mt-6 space-y-3 border border-[#f1c6ad]">
       <h4 className="font-bold text-[#6e290c]">Write a Review</h4>
-      {hasCompletedBooking ? (
+
+      {canReview ? (
         <>
           <select
             value={newReview.rating}
@@ -263,13 +257,15 @@ function AddReviewSection({ user, providerId, bookingId, selectedService, newRev
         </>
       ) : (
         <p className="text-gray-500 italic mt-3">
-          You can submit a review only after your booking with this provider is{" "}
-          <span className="font-semibold text-[#6e290c]">completed.</span>
+          {!hasCompletedBooking
+            ? "You can submit a review only after your booking is completed."
+            : "You have already submitted a review."}
         </p>
       )}
     </div>
   );
 }
+
 
 
 export default function ProviderDetailPage() {
@@ -290,6 +286,10 @@ export default function ProviderDetailPage() {
   const [activeTab, setActiveTab] = useState("services");
   const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
   const [bookingService, setBookingService] = useState(null);
+  const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+
+
 
   
 
@@ -333,6 +333,8 @@ export default function ProviderDetailPage() {
       setNewReview({ rating: 5, comment: "" });
       const res = await getReviewsByProvider(id);
       setReviews(res.data || []);
+      setAlreadyReviewed(true); // mark as reviewed
+setHasCompletedBooking(false); // optional, if you want to hide review form
     } catch (err) {
       console.error(err);
       alert("Failed to submit review.");
@@ -506,6 +508,10 @@ export default function ProviderDetailPage() {
                 newReview={newReview}
                 setNewReview={setNewReview}
                 handleSubmitReview={handleSubmitReview}
+                hasCompletedBooking={hasCompletedBooking}
+                setHasCompletedBooking={setHasCompletedBooking}
+                 alreadyReviewed={alreadyReviewed}
+  setAlreadyReviewed={setAlreadyReviewed}
               />
             </div>
           )}
