@@ -104,3 +104,16 @@ export const deleteReview =  (reviewId) => {
 export const getReviewByBookingId = (bookingId) => {
   return axios.get(`/api/reviews/booking/${bookingId}`);
 };
+
+//
+// =====================
+// CHAT APIs
+// =====================
+
+// 📤 Send message (REST fallback if WebSocket not used)
+export const sendMessageAPI = (messageData) =>
+  API.post("/messages", messageData);
+
+// 📥 Get all messages between logged-in user and another user
+export const getMessagesWithUser = (userId) =>
+  API.get(`/messages/between/${userId}`);

@@ -71,23 +71,22 @@ public class JwtUtil {
      * Return a Spring Authentication object from JWT.
      * Used by JwtChannelInterceptor for WebSocket connections.
      */
-    public Authentication getAuthentication(String token) {
-        String email = extractUsername(token);
-        if (email == null) return null;
+   public Authentication getAuthentication(String token) {
+    String email = extractUsername(token);
+    if (email == null) return null;
 
-        User user = userRepository.findByEmail(email).orElse(null);
-        if (user == null) return null;
+    User user = userRepository.findByEmail(email.toLowerCase()).orElse(null);
+    if (user == null) return null;
 
-        // Add role as GrantedAuthority
-        String roleName = "ROLE_" + user.getRole().name().toUpperCase();
+    String roleName = "ROLE_" + user.getRole().name().toUpperCase();
 
-        return new UsernamePasswordAuthenticationToken(
-        email,  // principal is email
+    return new UsernamePasswordAuthenticationToken(
+        email.toLowerCase(),
         null,
         Collections.singleton(() -> roleName)
-);
+    );
+}
 
-    }
     // Return the full User entity from JWT token
 public User getUserFromToken(String token) {
     String email = extractUsername(token);

@@ -86,32 +86,34 @@ public void sendMessageWebSocket(
         @Payload MessageDTO messageDTO,
         SimpMessageHeaderAccessor headerAccessor
 ) {
-    // Extract JWT from STOMP CONNECT/SEND headers
     String token = headerAccessor.getFirstNativeHeader("Authorization");
     if (token == null || !token.startsWith("Bearer ")) {
         System.out.println("❌ Missing or invalid token, cannot send message");
         return;
     }
+
     token = token.substring(7);
 
-    // Get authenticated user from JWT
-    User sender;
+    // ✅ Get user email from token, then fetch actual User from DB
+    String email;
     try {
-        sender = jwtUtil.getUserFromToken(token); // implement this method in your JwtUtil
+        email = jwtUtil.extractUsername(token); // change to your method that extracts username/email
     } catch (Exception e) {
         System.out.println("❌ Invalid token, cannot authenticate user: " + e.getMessage());
         return;
     }
 
-    // Validate and fetch receiver
+    User sender = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("Sender not found with email: " + email));
+
     if (messageDTO.getReceiverId() == null) {
         System.out.println("❌ Receiver ID is null, cannot send message");
         return;
     }
+
     User receiver = userRepository.findById(messageDTO.getReceiverId())
             .orElseThrow(() -> new RuntimeException("Receiver not found with ID: " + messageDTO.getReceiverId()));
 
-    // Build message entity
     Message message = Message.builder()
             .sender(sender)
             .receiver(receiver)
@@ -119,18 +121,21 @@ public void sendMessageWebSocket(
             .sentAt(LocalDateTime.now())
             .build();
 
-    // Save message to database
     Message saved = messageService.saveMessage(message);
-
-    // Convert saved message to DTO
     MessageDTO dto = convertToDTO(saved);
 
-    // Send via STOMP to sender and receiver
-    messagingTemplate.convertAndSendToUser(receiver.getEmail(), "/queue/messages", dto);
-    messagingTemplate.convertAndSendToUser(sender.getEmail(), "/queue/messages", dto);
+    // ✅ Broadcast to both users (real-time)
+   System.out.println("📤 Sending WebSocket message to user: " + receiver.getEmail());
+messagingTemplate.convertAndSendToUser(receiver.getEmail().toLowerCase(), "/queue/messages", dto);
+
+    messagingTemplate.convertAndSendToUser(sender.getEmail().toLowerCase(), "/queue/messages", dto);
 
     System.out.println("✅ Message saved and sent via WebSocket: " + dto);
+    System.out.println("📨 WebSocket header user: " + headerAccessor.getUser());
+System.out.println("📨 Sending to user: " + receiver.getEmail());
+
 }
+
 
 
     // ---------------- Utility Methods ---------------- //
