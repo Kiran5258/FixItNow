@@ -6,7 +6,8 @@ import { GiHammerNails } from "react-icons/gi";
 import { AiOutlineCheckCircle, AiOutlineRadiusSetting } from "react-icons/ai";
 import { FaRegLightbulb } from "react-icons/fa";
 import ChatComponent from "../../components/ChatComponent";
-import { useAuth } from "../../context/AuthContext";
+import ChatNotifications from "../../components/ChatNotifications";
+// Removed unused import: useAuth
 
 
 
@@ -41,13 +42,13 @@ export default function ProviderDashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [error, setError] = useState(false);
   const [reviews, setReviews] = useState([]);
-  const [showChatModal, setShowChatModal] = useState(false);
+  // Removed unused state: showChatModal, setShowChatModal
   const [showAdminChat, setShowAdminChat] = useState(false); // for floating chat
 
 
 const [customers, setCustomers] = useState([]);
 const [selectedCustomer, setSelectedCustomer] = useState(null);
-const [token, setToken] = useState(localStorage.getItem("token"));
+const [token] = useState(localStorage.getItem("token")); // Removed setToken - not used
 
 
 
@@ -66,6 +67,36 @@ const [token, setToken] = useState(localStorage.getItem("token"));
     const [respectScore, setRespectScore] = useState(0);
   const [respectLevel, setRespectLevel] = useState("Newbie");
   const [averageRating, setAverageRating] = useState(0);
+
+ useEffect(() => {
+  const handleOpenAdminChat = () => {
+    setShowAdminChat(true);
+  };
+
+  window.addEventListener("openAdminChat", handleOpenAdminChat);
+  return () => window.removeEventListener("openAdminChat", handleOpenAdminChat);
+}, []);
+
+
+
+
+  useEffect(() => {
+  const savedTab = localStorage.getItem("activeTab");
+
+  // If we stored tab as a number like "2" or a key like "users"
+  if (savedTab) {
+    // If numeric, map to your sidebar order
+    if (!isNaN(savedTab)) {
+      const tabs = ["home", "myservices", "bookings","profiles","reviews", "chat"];
+      const index = parseInt(savedTab, 10) - 1;
+      if (tabs[index]) setActiveTab(tabs[index]);
+    } else {
+      // If a string key (like "chat" or "users")
+      setActiveTab(savedTab);
+    }
+    localStorage.removeItem("activeTab"); // clear it after use
+  }
+}, []);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -154,7 +185,7 @@ const [token, setToken] = useState(localStorage.getItem("token"));
 
 
    const handleCancelProfile = () => {
-    setEditProfileData({ ...customer });
+    setEditProfileData({ ...provider }); // Fixed: use 'provider' instead of 'customer'
     setIsEditingProfile(false);
   };
 
@@ -208,8 +239,15 @@ const [token, setToken] = useState(localStorage.getItem("token"));
         </nav>
       </aside>
 
+      {/* Notification Icon - Top Right Corner Fixed */}
+      <div className="fixed top-4 right-6 z-50">
+        <ChatNotifications />
+      </div>
+
       {/* Main Content */}
-      <main className="flex-1 p-6 bg-white">
+      <div className="flex-1 flex flex-col bg-white">
+        {/* Main Content Area */}
+        <main className="flex-1 p-6 overflow-y-auto">
         {activeTab === "home" && (
           <div className="space-y-6">
             <Greeting provider={provider} />
@@ -235,7 +273,8 @@ const [token, setToken] = useState(localStorage.getItem("token"));
                   <div className="bg-gray-200 h-4 rounded-full">
                     <div
                       className="h-4 rounded-full bg-indigo-600 transition-all duration-500"
-                      style={{ width: `${respectScore}%` }}
+                     style={{ width: `${respectScore}%` }}
+
                     ></div>
                   </div>
                   <p className="text-gray-800 mt-1 font-semibold">{respectScore} / 100</p>
@@ -374,12 +413,16 @@ const [token, setToken] = useState(localStorage.getItem("token"));
 )}
 
 {/* Floating Chat Button */}
+{/* Floating Admin Chat Button */}
 <button
   onClick={() => setShowAdminChat(!showAdminChat)}
   className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg z-50 transition-transform hover:scale-105"
 >
   <FiMessageCircle size={24} />
 </button>
+
+
+      </div>
       </div>
    
   );
@@ -577,16 +620,28 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
                 placeholder="Location"
                 className="flex-1 px-4 py-2 border rounded-md"
               />
-              <button onClick={() => {
-                if (navigator.geolocation) {
-                  navigator.geolocation.getCurrentPosition(async pos => {
-                    const { latitude, longitude } = pos.coords;
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
-                    const data = await res.json();
-                    setNewService(prev => ({ ...prev, location: data.display_name || `Lat: ${latitude}, Lon: ${longitude}` }));
-                  });
-                } else alert("Geolocation not supported");
-              }} className="px-2 py-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105">Use Current</button>
+              <button
+  onClick={() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+        );
+        const data = await res.json();
+        setNewService((prev) => ({
+          ...prev,
+          location: data.display_name || `Lat: ${latitude}, Lon: ${longitude}`,
+        }));
+      });
+    } else {
+      alert("Geolocation not supported");
+    }
+  }}
+  className="px-2 py-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
+>
+  Use Current
+</button>
             </div>
 
             <button onClick={handleSave} className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">{editingService ? "Update Service" : "Add Service"}</button>
@@ -632,7 +687,8 @@ function ServicePerformance({ services, bookings }) {
               <div className="bg-gray-200 h-2 rounded-full mt-1">
                 <div
                   className="h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%`, backgroundColor: progressColor }}
+                 style={{ width: `${progress}%`, backgroundColor: progressColor }}
+
                 />
               </div>
             </div>
@@ -744,7 +800,8 @@ function BookingsCard({ bookings, setBookings }) {
   const startTime = b.timeSlot.split(" - ")[0]; // "9:00 AM"
 
   // Combine date + start time to get booking Date object
-  const bookingDateTime = new Date(`${b.bookingDate} ${startTime}`);
+ const bookingDateTime = new Date(`${b.bookingDate} ${startTime}`);
+
 
   // Check if "Mark as Complete" button should show
   const showMarkCompleteBtn =
@@ -899,22 +956,25 @@ function ProfileTab({
               className="border px-3 py-2 rounded"
               placeholder="Location"
             />
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={handleSaveProfile}
-                className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                disabled={loading}
-              >
-                {loading ? "Saving..." : "Save"}
-              </button>
-              <button
-                onClick={handleCancelProfile}
-                className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-            </div>
+           <div className="flex gap-2 mt-3">
+  <button
+    onClick={handleSaveProfile}
+    className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ${
+      loading ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    disabled={loading}
+  >
+    {loading ? "Saving..." : "Save"}
+  </button>
+  <button
+    onClick={handleCancelProfile}
+    className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+    disabled={loading}
+  >
+    Cancel
+  </button>
+</div>
+
           </>
         ) : (
           <>
@@ -936,32 +996,7 @@ function ProfileTab({
 
 function ReviewsTab({ reviews }) {
   const [allReviews, setAllReviews] = useState(reviews || []);
-  const [replyText, setReplyText] = useState("");
-  const [selectedReview, setSelectedReview] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  // Function to post a reply
-  const handleReply = async () => {
-    if (!replyText || !selectedReview) return;
-    setLoading(true);
-    try {
-      // Call backend API
-      await addReviewReply(selectedReview.id, { reply: replyText });
-
-      // Update local state to show reply immediately
-      setAllReviews(allReviews.map(r =>
-        r.id === selectedReview.id ? { ...r, reply: replyText } : r
-      ));
-
-      setReplyText("");
-      setSelectedReview(null);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to reply to review.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Removed unused variables: replyText, setReplyText, selectedReview, setSelectedReview, loading, setLoading, handleReply
 
   // Function to delete review
   const handleDeleteReview = async (reviewId) => {
@@ -991,9 +1026,18 @@ function ReviewsTab({ reviews }) {
             <p className="text-gray-700">{r.comment}</p>
 
             <div className="text-sm text-gray-500 flex gap-2 flex-wrap">
-              {r.service?.category && <span className="px-2 py-1 bg-gray-200 rounded">{`Category: ${r.service.category}`}</span>}
-              {r.service?.subcategory && <span className="px-2 py-1 bg-gray-200 rounded">{`Subcategory: ${r.service.subcategory}`}</span>}
-              
+              {r.service?.category && (
+  <span className="px-2 py-1 bg-gray-200 rounded">
+    {`Category: ${r.service.category}`}
+  </span>
+)}
+
+{r.service?.subcategory && (
+  <span className="px-2 py-1 bg-gray-200 rounded">
+    {`Subcategory: ${r.service.subcategory}`}
+  </span>
+)}
+
             </div>
 
             

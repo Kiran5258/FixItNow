@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/components/ChatComponent.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { Client } from "@stomp/stompjs";
@@ -6,6 +7,7 @@ import { FiSend, FiUser, FiWifi, FiWifiOff } from "react-icons/fi";
 import { sendMessageAPI, getMessagesWithUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 
 const ChatComponent = ({
   receiverId,
@@ -22,9 +24,6 @@ const ChatComponent = ({
   const stompClientRef = useRef(null);
   const messagesEndRef = useRef(null);
   const typingTimeout = useRef(null);
-    // ✅ Keep track of the latest receiverId (prevents stale value in WebSocket callback)
-  
-
 
   const themeColors = {
     admin: { primary: "#2563eb", gradient: "linear-gradient(135deg, #2563eb, #60a5fa)" },
@@ -69,6 +68,13 @@ const ChatComponent = ({
   useEffect(() => {
     if (!token || !receiverId || !user?.id) return;
     console.log("🔁 Fetching messages with user", receiverId);
+
+    // Mark notifications from this sender as read
+    axiosInstance
+      .put(`/api/notifications/read-from/${receiverId}`)
+      .then(() => console.log("✅ Marked notifications from sender as read"))
+      .catch((err) => console.error("❌ Failed to mark notifications as read:", err));
+
     getMessagesWithUser(receiverId)
       .then((res) => {
         setMessages(res.data || []);
@@ -76,7 +82,7 @@ const ChatComponent = ({
       .catch((err) => console.error("❌ Error loading chat:", err));
   }, [receiverId, token, user?.id]);
 
-  // ✅ WebSocket setup — pure WebSocket (no polling)
+  // ✅ WebSocket setup
   useEffect(() => {
     if (!token || !user?.email) {
       console.log("⏳ Waiting for auth before opening WS (token/email missing)");
@@ -108,14 +114,15 @@ const ChatComponent = ({
               const msgSenderId = String(msg.senderId ?? "");
               const msgReceiverId = String(msg.receiverId ?? "");
 
-              // If message belongs to the currently open chat → add/replace
               if (msgSenderId === currentChatId || msgReceiverId === currentChatId) {
                 console.log(`📨 Message belongs to current chat (${currentChatId}), updating state`);
                 setMessages((prev) => {
                   let replaced = false;
                   const next = prev.map((m) => {
-                    // replace optimistic message if same content or id match
-                    if ((m.temp && m.content === msg.content) || (m.id && msg.id && String(m.id) === String(msg.id))) {
+                    if (
+                      (m.temp && m.content === msg.content) ||
+                      (m.id && msg.id && String(m.id) === String(msg.id))
+                    ) {
                       replaced = true;
                       return { ...msg };
                     }
@@ -125,7 +132,6 @@ const ChatComponent = ({
                   return next;
                 });
               } else {
-                // message for another chat (you can show notification here)
                 console.log("📬 Incoming for other chat — ignoring in this view:", msg);
               }
             } catch (err) {
@@ -134,20 +140,13 @@ const ChatComponent = ({
           },
           { Authorization: `Bearer ${token}` }
         );
-
-        // optional: also subscribe temporarily to a test topic if you want debugging
-        // client.subscribe("/topic/test", (m) => console.log("TEST topic:", m.body));
       },
-      onStompError: (frame) => {
-        console.error("❌ STOMP error:", frame);
-      },
+      onStompError: (frame) => console.error("❌ STOMP error:", frame),
       onDisconnect: () => {
-        console.warn("⚠️ STOMP disconnected");
+        console.warn("⚠ STOMP disconnected");
         setConnected(false);
       },
-      onWebSocketError: (err) => {
-        console.error("❌ WebSocket error:", err);
-      },
+      onWebSocketError: (err) => console.error("❌ WebSocket error:", err),
     });
 
     client.activate();
@@ -160,25 +159,23 @@ const ChatComponent = ({
     };
   }, [token, user?.email, receiverId]);
 
-  // Handle typing
   const handleTyping = (e) => {
     setInput(e.target.value);
     clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(() => {}, 1500);
   };
 
-  // ✅ Send message (uses prop receiverId)
+  // ✅ Send message
   const sendMessage = async () => {
     if (!input.trim() || !user?.id) return;
 
     const msgContent = input.trim();
     setInput("");
 
-    // optimistic message (shows immediately)
     const optimistic = {
       id: `temp-${Date.now()}`,
       senderId: user.id,
-      receiverId: receiverId, // IMPORTANT: use prop
+      receiverId,
       content: msgContent,
       senderName: user.name || "You",
       sentAt: new Date().toISOString(),
@@ -196,11 +193,9 @@ const ChatComponent = ({
           body: JSON.stringify({ receiverId, content: msgContent }),
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log("✅ Message sent via WebSocket");
       } else {
         console.log("🌐 WebSocket not connected, sending via REST API...");
         await sendMessageAPI({ receiverId, content: msgContent });
-        console.log("✅ Message sent via REST fallback");
       }
     } catch (err) {
       console.error("❌ Send failed:", err);
@@ -241,14 +236,22 @@ const ChatComponent = ({
     );
   };
 
-  // Layout
-  // ✅ Adjust height dynamically for each user type (theme)
-const chatHeight =
-  theme === "admin"
-    ? "520px" // smaller for admin
-    : theme === "provider"
-    ? "640px" // default
-    : "640px"; // customer
+  const chatHeight =
+    theme === "admin" ? "520px" : theme === "provider" ? "640px" : "640px";
+    // ✅ Auto-open Admin chat when "openAdminChat" event is fired globally
+useEffect(() => {
+  const handleOpenAdminChat = () => {
+    if (user?.role === "PROVIDER" || user?.role === "CUSTOMER") {
+      // You can set receiverId here for admin if you have a fixed adminId
+      console.log("📨 Received openAdminChat event — focusing admin chat window");
+      // Optionally scroll or focus input, etc.
+    }
+  };
+
+  window.addEventListener("openAdminChat", handleOpenAdminChat);
+  return () => window.removeEventListener("openAdminChat", handleOpenAdminChat);
+}, [user]);
+
 
   return (
     <div
@@ -270,7 +273,9 @@ const chatHeight =
             <FiUser size={16} />
           </div>
           <div>
-            <p className="font-semibold text-sm">Chat with {receiverName || "Loading..."}</p>
+            <p className="font-semibold text-sm">
+              Chat with {receiverName || "Loading..."}
+            </p>
             <p className="text-white/80 flex items-center gap-1 text-xs">
               {connected ? (
                 <>
@@ -285,11 +290,11 @@ const chatHeight =
           </div>
         </div>
       </div>
-      <br></br>
+      <br />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-4 scroll-smooth bg-gray-50">
-        {(!user?.id || messages.length === 0) ? (
+        {!user?.id || messages.length === 0 ? (
           <p className="text-gray-400 text-center mt-6 text-sm">
             {user?.id ? "No messages yet. Start chatting!" : "Loading chat..."}
           </p>

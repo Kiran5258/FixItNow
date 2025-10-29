@@ -4,6 +4,7 @@ import infosys.backend.dto.MessageDTO;
 import infosys.backend.model.Message;
 import infosys.backend.model.User;
 import infosys.backend.service.MessageService;
+import infosys.backend.service.ChatNotificationService;
 import infosys.backend.repository.UserRepository;
 import infosys.backend.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class MessageController {
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final JwtUtil jwtUtil;
+    private final ChatNotificationService notificationService;
 
     // ---------------- REST API ---------------- //
 
@@ -129,6 +131,9 @@ public void sendMessageWebSocket(
 messagingTemplate.convertAndSendToUser(receiver.getEmail().toLowerCase(), "/queue/messages", dto);
 
     messagingTemplate.convertAndSendToUser(sender.getEmail().toLowerCase(), "/queue/messages", dto);
+
+    // 🔔 Create notification for receiver
+    notificationService.createNotification(sender, receiver, messageDTO.getContent(), saved.getSentAt());
 
     System.out.println("✅ Message saved and sent via WebSocket: " + dto);
     System.out.println("📨 WebSocket header user: " + headerAccessor.getUser());

@@ -1,6 +1,7 @@
 // src/pages/Dashboard/CustomerDashboard.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import ChatNotifications from "../../components/ChatNotifications";
 import {
   FiHome,
   FiLogOut,
@@ -88,12 +89,14 @@ const geocodeLocation = async (location) => {
   return null;
 };
 
-
-export const getDistance = async (startLat, startLon, endLat, endLon) => {
+// Moved getDistance to avoid Fast Refresh warning (can't export non-components)
+// If you need this function elsewhere, move it to a separate utility file
+const getDistance = async (startLat, startLon, endLat, endLon) => {
   try {
     const response = await fetch(
-      `https://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=false`
-    );
+  `https://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=false`
+);
+
 
     if (!response.ok) {
       throw new Error("Failed to fetch distance from OSRM");
@@ -127,6 +130,8 @@ export default function CustomerDashboard() {
   const [services, setServices] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [customer, setCustomer] = useState(null);
+  const [showAdminChat, setShowAdminChat] = useState(false);
+
   const [servicesWithDistance, setServicesWithDistance] = useState([]);
   const [reviewsMap, setReviewsMap] = useState({});
   
@@ -136,9 +141,8 @@ export default function CustomerDashboard() {
   const [hoveredServiceId, setHoveredServiceId] = useState(null);
   const [categorySearch, setCategorySearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
-  const [searchRadius, setSearchRadius] = useState(); // or 5 as default
+  // Removed unused state variables: searchRadius, selectedProviderId
 
-  const [selectedProviderId, setSelectedProviderId] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   // For review modal
 const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -171,7 +175,6 @@ const [averageRating, setAverageRating] = useState(0);
 
 const openReviewModal = (service) => {
   setReviewService(service);
-  setBookingForReview(booking);
   fetchReviews(service.providerId || service.id);
   setIsReviewModalOpen(true);
 };
@@ -183,7 +186,6 @@ const handleSubmitReview = async () => {
   
   try {
     await addReview({
-      booking: { id: bookingId || null },
       customer: { id: customer.id },
       provider: { id: reviewService.providerId || reviewService.id },
       service: { id: reviewService.id },
@@ -206,10 +208,11 @@ useEffect(() => {
     const map = {};
     for (const b of bookings) {
       try {
-        const res = await fetch(
-          `http://localhost:8080/api/reviews/booking/${b.id}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+       const res = await fetch(
+  `http://localhost:8080/api/reviews/booking/${b.id}`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+
 
         if (res.status === 200) {
         const review = await res.json();
@@ -321,6 +324,7 @@ useEffect(() => {
 
   fetchAllData();
   
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 
 
@@ -345,6 +349,19 @@ const handleCancelProfile = () => {
   setIsEditingProfile(false);
 };
 
+useEffect(() => {
+  const openAdminChatHandler = () => {
+    console.log("🟢 Event received: openAdminChat");
+    setShowAdminChat(true);
+  };
+
+  window.addEventListener("openAdminChat", openAdminChatHandler);
+
+  return () => {
+    window.removeEventListener("openAdminChat", openAdminChatHandler);
+  };
+}, []);
+
 
 
 
@@ -355,18 +372,14 @@ const handleCancelProfile = () => {
     { name: "Profile", icon: <FiUser />, key: "profile" },
   ];
 
-  const filteredServices = services.filter(
-    (s) =>
-      s.category?.toLowerCase().includes(categorySearch.toLowerCase()) &&
-      s.location?.toLowerCase().includes(locationSearch.toLowerCase())
-  );
+  // Removed unused filteredServices variable
 
   const filteredSortedServices = servicesWithDistance
   .filter((s) => {
     const matchesCategory = s.category?.toLowerCase().includes(categorySearch.toLowerCase());
     const matchesLocation = s.location?.toLowerCase().includes(locationSearch.toLowerCase());
-    const withinRadius = !searchRadius || (s.distance && s.distance <= searchRadius);
-    return matchesCategory && matchesLocation && withinRadius;
+    // Removed searchRadius filter since searchRadius is not defined at this scope
+    return matchesCategory && matchesLocation;
   })
   .sort((a, b) => {
     if (sortOption === "rating") return (b.averageRating.toFixed(2) || 0) - (a.averageRating.toFixed(2) || 0);
@@ -389,7 +402,9 @@ const handleCancelProfile = () => {
         className="w-64 p-6 flex flex-col h-screen sticky top-0"
         style={{ backgroundColor: rustBrown }}
       >
-        <h2 className="text-2xl font-bold mb-6 text-white">FixItNow</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">FixItNow</h2>
+        </div>
         <nav className="flex flex-col gap-3 flex-1">
           {sidebarItems.map((item) => (
             <button
@@ -413,13 +428,20 @@ const handleCancelProfile = () => {
         </nav>
       </aside>
 
+      {/* Notification Icon - Top Right Corner Fixed */}
+      <div className="fixed top-4 right-6 z-50">
+        <ChatNotifications />
+      </div>
+
       {/* Main Content */}
       {!customer ? (
         <div className="flex flex-1 items-center justify-center text-gray-600 text-lg">
           Loading dashboard...
         </div>
       ) : (
-        <main className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 flex flex-col">
+          {/* Main Content Area */}
+          <main className="flex-1 p-6 overflow-y-auto bg-gray-50">
           {/* HOME TAB */}
           {activeTab === "home" && customer && (
   <div className="space-y-6">
@@ -521,6 +543,7 @@ const handleCancelProfile = () => {
             />
           )}
         </main>
+        </div>
       )}
 
       {/* Booking Form Modal */}
@@ -546,7 +569,29 @@ const handleCancelProfile = () => {
     onSubmit={handleSubmitReview}
   />
 )}
-
+ {showAdminChat && (
+  <div
+    className="fixed bottom-20 right-6 sm:right-10 bg-white shadow-2xl rounded-2xl w-[29rem] max-w-[90vw] h-[36rem] border border-gray-200 p-4 flex flex-col z-50 transition-all duration-300"
+    style={{ transform: "translateY(0)" }}
+  >
+    <button
+        onClick={() => setShowAdminChat(false)}
+        className="text-gray-500 hover:text-red-500 transition-colors flex justify-end"
+      >
+        <FiX size={20} />
+      </button>
+    <div className="flex justify-center items-center w-full max-w-[90vw]">
+    <ChatComponent token={token} receiverId={13} theme={"admin"} />
+  </div>
+    
+</div>
+)}
+<button
+  onClick={() => setShowAdminChat(!showAdminChat)}
+  className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg z-50 transition-transform hover:scale-105"
+>
+  <FiMessageCircle size={24} />
+</button>
     </div>
   );
 }
@@ -573,15 +618,15 @@ function ServicesTab({
   setLocationSearch,
   setSelectedService,
   setIsBookingModalOpen,
-  customer, // customer object for distance calculation
+  // Removed unused: customer
   openReviewModal, 
   token
 }) {
   const [mapCenter, setMapCenter] = useState(null);
-  const [sortOption, setSortOption] = useState("distance");
+  const [sortOption] = useState("distance"); // Removed setSortOption - not used
   const [searchRadius, setSearchRadius] = useState(); // default 5 km radius
-   const [showChatModal, setShowChatModal] = useState(false);
-    const [showAdminChat, setShowAdminChat] = useState(false);
+  // Removed unused state: showChatModal, setShowChatModal
+  const [showAdminChat, setShowAdminChat] = useState(false);
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -683,31 +728,9 @@ const filteredSortedServices = (servicesWithDistance || [])
             openReviewModal={openReviewModal}
           />
         ))}
-        {showAdminChat && (
-  <div
-    className="fixed bottom-20 right-6 sm:right-10 bg-white shadow-2xl rounded-2xl w-[29rem] max-w-[90vw] h-[36rem] border border-gray-200 p-4 flex flex-col z-50 transition-all duration-300"
-    style={{ transform: "translateY(0)" }}
-  >
-    <button
-        onClick={() => setShowAdminChat(false)}
-        className="text-gray-500 hover:text-red-500 transition-colors flex justify-end"
-      >
-        <FiX size={20} />
-      </button>
-    <div className="flex justify-center items-center w-full max-w-[90vw]">
-    <ChatComponent token={token} receiverId={13} theme={"admin"} />
-  </div>
-    
-</div>
-)}
+       
 
-{/* Floating Chat Button */}
-<button
-  onClick={() => setShowAdminChat(!showAdminChat)}
-  className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg z-50 transition-transform hover:scale-105"
->
-  <FiMessageCircle size={24} />
-</button>
+
       </div>
     </div>
   );
@@ -730,7 +753,8 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId }) {
 
   const handleViewDetails = () => {
     // Navigate to provider detail page
-    navigate(`/provider/${service.providerId || service.id}`);
+   navigate(`/provider/${service.providerId || service.id}`);
+
   };
 
   return (
@@ -787,18 +811,7 @@ function ServiceCard({ service, setMapCenter, setHoveredServiceId }) {
 // Bookings Card for CustomerDashboard
 function BookingsTab({ bookings, setBookings ,reviewsMap}) {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
-  const [selectedChatProvider, setSelectedChatProvider] = useState(null);
-
-
-  
-
- 
-  
-
-
-
-  
+  // Removed unused variables: token, selectedChatProvider, setSelectedChatProvider
 
   const handleCustomerVerify = async (bookingId) => {
   try {
@@ -822,10 +835,10 @@ function BookingsTab({ bookings, setBookings ,reviewsMap}) {
 };
 
   const handleLeaveReview = (booking) => {
-    navigate(`/provider/${booking.provider.id}`, {
-      state: { bookingId: booking.id, serviceId: booking.service.id },
-    });
-     setReviewsMap(prev => ({ ...prev, [booking.id]: true }));
+   navigate(`/provider/${booking.provider.id}`, {
+  state: { bookingId: booking.id, serviceId: booking.service.id },
+});
+
   };
 
   const getStatusBadge = (b) => {
@@ -918,11 +931,14 @@ function BookingsTab({ bookings, setBookings ,reviewsMap}) {
             )}
             {b.status?.toLowerCase() !== "cancelled" && (
   <button
-    onClick={() => navigate(`/chat/${b.provider.id}`, { state: { provider: b.provider } })}
-    className="px-4 py-2 bg-[#6e290c] text-white rounded-lg hover:bg-[#a44a1d] transition"
-  >
-    Chat
-  </button>
+  onClick={() =>
+    navigate(`/chat/${b.provider.id}`, { state: { provider: b.provider } })
+  }
+  className="px-4 py-2 bg-[#6e290c] text-white rounded-lg hover:bg-[#a44a1d] transition"
+>
+  Chat
+</button>
+
             )}
 
            {b.status?.toLowerCase() === "completed" && !reviewsMap[b.id] && (
@@ -1279,5 +1295,3 @@ function ReviewModal({ service, reviews, averageRating, onClose, newReview, setN
     </div>
   );
 }
-
-
