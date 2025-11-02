@@ -9,7 +9,6 @@ import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import axiosInstance from "../utils/axiosInstance";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 const ChatComponent = ({
   receiverId,
