@@ -13,6 +13,7 @@ import {
   updateService, deleteService, getAllBookings
 } from "../../services/api";
 import ChatComponent from "../../components/ChatComponent";
+import ChatNotifications from "../../components/ChatNotifications";
 
 const rustBrown = "#6e290cff";
 
@@ -25,6 +26,32 @@ export default function AdminDashboard() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
+
+  // Restore active tab when navigating from notifications
+useEffect(() => {
+  const savedTab = localStorage.getItem("activeTab");
+
+  if (savedTab) {
+    // Define admin tab order — match sidebar keys
+    const tabs = ["home", "users", "services", "chat"];
+
+    // If numeric (e.g., "2"), map to sidebar order
+    if (!isNaN(savedTab)) {
+      const index = parseInt(savedTab, 10) - 1;
+      if (tabs[index]) {
+        setActiveTab(tabs[index]);
+        console.log(`🔁 Restored tab: ${tabs[index]} (from index ${index + 1})`);
+      }
+    } else {
+      // If it's a string key like "chat" or "users"
+      setActiveTab(savedTab);
+      console.log(`🔁 Restored tab by name: ${savedTab}`);
+    }
+
+    localStorage.removeItem("activeTab"); // Clear after using
+  }
+}, []);
+
 
   // Fetch Users
   useEffect(() => {
@@ -76,6 +103,8 @@ export default function AdminDashboard() {
     fetchBookings();
   }, []);
 
+  
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
@@ -117,8 +146,15 @@ export default function AdminDashboard() {
         </nav>
       </aside>
 
+      {/* Notification Icon - Top Right Corner Fixed */}
+      <div className="fixed top-4 right-6 z-50">
+        <ChatNotifications />
+      </div>
+
       {/* Main Content */}
-      <main className="flex-1 p-6 bg-white">
+      <div className="flex-1 flex flex-col bg-white">
+        {/* Main Content Area */}
+        <main className="flex-1 p-6 overflow-y-auto">
         {activeTab === "home" && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -148,6 +184,7 @@ export default function AdminDashboard() {
 )}
 
       </main>
+      </div>
     </div>
   );
 }

@@ -2,14 +2,16 @@ package infosys.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "chat_notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Message {
+public class ChatNotification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,12 +21,24 @@ public class Message {
     @JoinColumn(name = "sender_id", nullable = false)
     private User sender;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne
     @JoinColumn(name = "receiver_id", nullable = false)
     private User receiver;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String content;
+    @Column(nullable = false)
+    private String messageContent;
 
+    @Column(nullable = false)
     private LocalDateTime sentAt;
+
+    @Column(nullable = false)
+    private Boolean isRead = false;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }

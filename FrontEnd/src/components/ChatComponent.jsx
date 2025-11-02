@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/components/ChatComponent.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { Client } from "@stomp/stompjs";
@@ -6,7 +7,8 @@ import { FiSend, FiUser, FiWifi, FiWifiOff } from "react-icons/fi";
 import { sendMessageAPI, getMessagesWithUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import axiosInstance from "../utils/axiosInstance";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const ChatComponent = ({
@@ -67,6 +69,13 @@ const ChatComponent = ({
   useEffect(() => {
     if (!token || !receiverId || !user?.id) return;
     console.log("🔁 Fetching messages with user", receiverId);
+
+    // Mark notifications from this sender as read
+    axiosInstance
+      .put(`/api/notifications/read-from/${receiverId}`)
+      .then(() => console.log("✅ Marked notifications from sender as read"))
+      .catch((err) => console.error("❌ Failed to mark notifications as read:", err));
+
     getMessagesWithUser(receiverId)
       .then((res) => {
         setMessages(res.data || []);
@@ -106,13 +115,15 @@ const ChatComponent = ({
               const msgSenderId = String(msg.senderId ?? "");
               const msgReceiverId = String(msg.receiverId ?? "");
 
-              // ✅ If message belongs to this chat
               if (msgSenderId === currentChatId || msgReceiverId === currentChatId) {
                 console.log(`📨 Message belongs to current chat (${currentChatId}), updating state`);
                 setMessages((prev) => {
                   let replaced = false;
                   const next = prev.map((m) => {
-                    if ((m.temp && m.content === msg.content) || (m.id && msg.id && String(m.id) === String(msg.id))) {
+                    if (
+                      (m.temp && m.content === msg.content) ||
+                      (m.id && msg.id && String(m.id) === String(msg.id))
+                    ) {
                       replaced = true;
                       return { ...msg };
                     }
@@ -122,21 +133,7 @@ const ChatComponent = ({
                   return next;
                 });
               } else {
-                // ✅ Incoming message from another chat → show notification
-                console.log("📬 Incoming for other chat — showing notification:", msg);
-                toast.info(`💬 New message from ${msg.senderName || "Unknown"}: ${msg.content}`, {
-                  position: "bottom-right",
-                  autoClose: 4000,
-                  hideProgressBar: false,
-                  closeOnClick: true,
-                  pauseOnHover: true,
-                  draggable: true,
-                  theme: "colored",
-                });
-
-                // 🔔 Optional sound notification
-                const audio = new Audio("/notification.mp3");
-                audio.play().catch(() => {});
+                console.log("📬 Incoming for other chat — ignoring in this view:", msg);
               }
             } catch (err) {
               console.error("❌ Error parsing WS message:", err);
@@ -147,7 +144,7 @@ const ChatComponent = ({
       },
       onStompError: (frame) => console.error("❌ STOMP error:", frame),
       onDisconnect: () => {
-        console.warn("⚠️ STOMP disconnected");
+        console.warn("⚠ STOMP disconnected");
         setConnected(false);
       },
       onWebSocketError: (err) => console.error("❌ WebSocket error:", err),
@@ -163,7 +160,6 @@ const ChatComponent = ({
     };
   }, [token, user?.email, receiverId]);
 
-  // Handle typing
   const handleTyping = (e) => {
     setInput(e.target.value);
     clearTimeout(typingTimeout.current);
@@ -234,6 +230,20 @@ const ChatComponent = ({
 
   const chatHeight =
     theme === "admin" ? "520px" : theme === "provider" ? "640px" : "640px";
+    // ✅ Auto-open Admin chat when "openAdminChat" event is fired globally
+useEffect(() => {
+  const handleOpenAdminChat = () => {
+    if (user?.role === "PROVIDER" || user?.role === "CUSTOMER") {
+      // You can set receiverId here for admin if you have a fixed adminId
+      console.log("📨 Received openAdminChat event — focusing admin chat window");
+      // Optionally scroll or focus input, etc.
+    }
+  };
+
+  window.addEventListener("openAdminChat", handleOpenAdminChat);
+  return () => window.removeEventListener("openAdminChat", handleOpenAdminChat);
+}, [user]);
+
 
   return (
     <div
@@ -247,7 +257,9 @@ const ChatComponent = ({
             <FiUser size={16} />
           </div>
           <div>
-            <p className="font-semibold text-sm">Chat with {receiverName || "Loading..."}</p>
+            <p className="font-semibold text-sm">
+              Chat with {receiverName || "Loading..."}
+            </p>
             <p className="text-white/80 flex items-center gap-1 text-xs">
               {connected ? (
                 <>
@@ -262,10 +274,11 @@ const ChatComponent = ({
           </div>
         </div>
       </div>
+      <br />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-4 scroll-smooth bg-gray-50">
-        {(!user?.id || messages.length === 0) ? (
+        {!user?.id || messages.length === 0 ? (
           <p className="text-gray-400 text-center mt-6 text-sm">
             {user?.id ? "No messages yet. Start chatting!" : "Loading chat..."}
           </p>
