@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser,FiMessageCircle,FiX,FiMessageSquare } from "react-icons/fi";
+import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser,FiMessageCircle,FiX,FiMessageSquare ,FiClipboard,FiAlertTriangle,FiSend} from "react-icons/fi";
 import { BiClipboard } from "react-icons/bi";
 import { GiHammerNails } from "react-icons/gi";
-import { AiOutlineCheckCircle, AiOutlineRadiusSetting } from "react-icons/ai";
-import { FaRegLightbulb } from "react-icons/fa";
+import { AiOutlineCheckCircle, AiOutlineRadiusSetting ,} from "react-icons/ai";
+import { FaRegLightbulb, } from "react-icons/fa";
 import ChatComponent from "../../components/ChatComponent";
 import ChatNotifications from "../../components/ChatNotifications";
 // Removed unused import: useAuth
@@ -25,7 +25,15 @@ import {
   getReviewsByProvider,
   deleteReview,
   markBookingCompleteByProvider,
-  getAllUsers
+  getAllUsers,
+  getAllServices,
+  getReportsByUser,
+  getProviders,
+  getCustomers,
+  createReport,
+  
+  
+  
   
 } from "../../services/api";
 import { Md18UpRating, MdReviews } from "react-icons/md";
@@ -196,6 +204,7 @@ const [token] = useState(localStorage.getItem("token")); // Removed setToken - n
     { name: "Bookings", icon: <BiClipboard className="text-white" />, key: "bookings" },
     { name: "Profile", icon: <FiUser className="text-white" />, key: "profile" }, 
     { name: "Reviews", icon: <MdReviews className="text-white" />, key: "reviews" }, 
+    { name: "Reports", icon: <FiClipboard />, key: "reports" },
 
   ];
 
@@ -391,6 +400,7 @@ const [token] = useState(localStorage.getItem("token")); // Removed setToken - n
     </div>
   </div>
 )}
+{activeTab === "reports" && provider && <ReportsTab user={provider} />}
 
       </main>
       {/* Floating Admin Chat Button and Modal – stays visible always */}
@@ -435,7 +445,7 @@ function Greeting({ provider }) {
   const greeting =
     hours < 12 ? "Good Morning" :
     hours < 16 ? "Good Afternoon" :
-    hours < 18 ? "Good Evening":
+    hours < 20 ? "Good Evening":
     "Good Night";
 
   return (
@@ -1053,6 +1063,320 @@ function ReviewsTab({ reviews }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}function ReportsTab({ user }) {
+  const [reports, setReports] = useState([]);
+  const [reason, setReason] = useState("");
+  const [targetType, setTargetType] = useState("CUSTOMER"); // ✅ default to CUSTOMER
+  const [targetId, setTargetId] = useState("");
+
+  const [customers, setCustomers] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState([]);
+
+  useEffect(() => {
+    if (user?.id) fetchReports(user.id);
+    fetchAllOptions();
+  }, [user]);
+
+  const fetchReports = async (id) => {
+    try {
+      const res = await getReportsByUser(id);
+      setReports(res.data || []);
+    } catch (err) {
+      console.error("Error fetching reports:", err);
+    }
+  };
+
+  const fetchAllOptions = async () => {
+    try {
+      let bookingRes = { data: [] };
+      let custRes = { data: [] };
+
+      const serviceRes = await getAllServices();
+
+      // ✅ Fetch all customers
+      custRes = await getCustomers();
+
+      if (user.role === "CUSTOMER") {
+        bookingRes = await getBookingsByCustomer(user.id);
+      } else if (user.role === "PROVIDER") {
+        bookingRes = await getBookingsByProvider(user.id);
+      } else if (user.role === "ADMIN") {
+        bookingRes = await getAllBookings();
+      }
+
+      setBookings(bookingRes.data || []);
+      setCustomers(custRes.data || []);
+      setServices(serviceRes.data || []);
+      console.log("📋 All Customers:", custRes.data);
+    } catch (err) {
+      console.error("Error fetching customers/bookings:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user?.id) return alert("User not loaded yet.");
+    if (!targetId) return alert("Please select a valid target.");
+
+    try {
+      await createReport(user.id, targetType, targetId, reason);
+      alert("✅ Report submitted successfully!");
+      setReason("");
+      setTargetId("");
+      fetchReports(user.id);
+    } catch (err) {
+      console.error("Error creating report:", err);
+      alert("❌ Failed to submit report.");
+    }
+  };
+
+  // ✅ Dropdown options
+  const getTargetOptions = () => {
+    if (loading) return [<option key="loading">Loading...</option>];
+
+    switch (targetType) {
+      case "CUSTOMER":
+        return customers.length > 0 ? (
+          customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              👤 {c.name || c.fullName || "Unnamed Customer"} —{" "}
+              {c.email || "No email"}
+            </option>
+          ))
+        ) : (
+          <option key="nocust">No customers found</option>
+        );
+
+      case "BOOKING":
+        return bookings.length > 0 ? (
+          bookings.map((b) => {
+            const serviceCategory = b.service?.category || "Unnamed Category";
+            const serviceSubcategory =
+              b.service?.subcategory || "Unnamed Subcategory";
+            const customerName =
+              b.customer?.name ||
+              b.customer?.fullName ||
+              b.customer?.email ||
+              "Unknown Customer";
+            const date = b.bookingDate
+              ? new Date(b.bookingDate).toLocaleDateString()
+              : "Unknown Date";
+           const status =
+  b.status === "COMPLETED"
+    ? "✅"
+    : b.status === "CANCELLED"
+    ? "❌"
+    : b.status === "CONFIRMED"
+    ? "🟢"
+    : "⏳";
+
+
+            return (
+              <option key={b.id} value={b.id} className="truncate text-xs text-gray-700"  >
+                👤 {customerName} | 📅 {date} - {serviceCategory} (
+                {serviceSubcategory}) {status}
+                
+              </option>
+            );
+          })
+        ) : (
+          <option key="nobook">No bookings found</option>
+        );
+
+      default:
+        return [];
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-red-100 via-pink-50 to-gray-100 p-8">
+      {/* Centered Form Card */}
+      <div className="flex justify-center mb-10">
+        <div className="w-full max-w-3xl h-[470px] backdrop-blur-xl bg-white/60 shadow-2xl rounded-3xl p-8 border border-white/30">
+          {/* Report Header */}
+          <div className="flex flex-col md:flex-row justify-between items-center border-b border-gray-200 pb-5 mb-6">
+            <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-3">
+              <span className="p-2 bg-red-100 text-red-600 rounded-xl">
+                <FiAlertTriangle size={24} />
+              </span>
+              Report an Issue
+            </h2>
+            <p className="text-gray-700 mt-3 md:mt-0 text-sm bg-white/70 px-4 py-2 rounded-full shadow-sm">
+              👤 Logged in as: <strong>{user?.name || "Loading..."}</strong>
+            </p>
+          </div>
+
+          {/* Report Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="text-gray-700 font-medium mb-1 block">
+                  Target Type
+                </label>
+                <select
+                  className="w-full bg-white/70 border border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none shadow-sm"
+                  value={targetType}
+                  onChange={(e) => {
+                    setTargetType(e.target.value);
+                    setTargetId("");
+                  }}
+                >
+                  <option value="CUSTOMER">Customer</option>
+                  <option value="BOOKING">Booking</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-gray-700 font-medium mb-1 block">
+                  Select Target
+                </label>
+                <select
+    className="w-full bg-white/80 border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 
+    focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none shadow-md 
+    hover:shadow-lg transition-all duration-300 text-sm"
+    value={targetId}
+    
+    onChange={(e) => setTargetId(e.target.value)}
+    required
+  >
+                  <option value="">-- Select --</option>
+                  {getTargetOptions()}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-gray-700 font-medium mb-1 block">
+                Reason for Report
+              </label>
+              <textarea
+                placeholder="Describe the issue in detail..."
+                className="w-full bg-white/70 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none resize-none shadow-sm"
+                rows="3"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-red-500 via-pink-500 to-red-600 hover:opacity-90 transition-all text-white py-3 rounded-xl font-semibold flex justify-center items-center gap-2 shadow-lg transform hover:scale-[1.02]"
+            >
+              <FiSend size={20} /> Submit Report
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Previous Reports */}
+      <div className="w-full max-w-6xl mx-auto">
+        <h3 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
+          Your Previous Reports
+        </h3>
+
+        {reports.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reports.map((r) => {
+              const booking = bookings.find((b) => b.id === r.targetId);
+              const serviceCategory =
+                booking?.service?.category || "Unnamed Category";
+              const serviceSubcategory =
+                booking?.service?.subcategory || "Unnamed Subcategory";
+              const customerName =
+                booking?.customer?.name ||
+                booking?.customer?.fullName ||
+                booking?.customer?.email ||
+                "Unknown Customer";
+              const date = booking?.bookingDate
+                ? new Date(booking.bookingDate).toLocaleDateString()
+                : "Unknown Date";
+              const status = booking?.status || "Pending";
+
+              return (
+                <div
+                  key={r.id}
+                  className="bg-white/90 border border-gray-200 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 p-5"
+                >
+                  <div className="flex flex-col justify-between h-full">
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2 text-lg">
+                        {r.targetType === "BOOKING"
+                          ? "📘 Booking Report"
+                          : "👤 Customer Report"}
+                      </h4>
+                      {r.targetType === "CUSTOMER" && (
+                        <div className="text-sm text-gray-700 leading-tight mb-2">
+                          👤 {customers.find(c => c.id === r.targetId)?.name || "Unknown Customer"}
+                          </div>)}
+
+                      {r.targetType === "BOOKING" && (
+                        <div className="text-sm text-gray-700 leading-tight mb-2">
+                          📅 {date} — {customerName}
+                          <br />
+                          {serviceCategory} ({serviceSubcategory})
+                          <br />
+                          <span
+                            className={`text-xs font-semibold ${
+                              status === "COMPLETED"
+                                ? "text-green-600"
+                                : status === "CANCELLED"
+                                ? "text-red-600"
+                                : "text-yellow-600"
+                            }`}
+                          >
+                            {status}
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="text-sm text-gray-700 mb-1">
+                        <strong>Reason:</strong> {r.reason}
+                      </p>
+
+                      <strong className="text-sm text-gray-500">
+                        Reported on:{" "}
+                        {r.createdAt
+                          ? new Date(r.createdAt).toLocaleDateString()
+                          : "Unknown Date"}
+                      </strong>
+                    </div>
+
+                    <div className="mt-3 flex flex-col items-end">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          r.status === "Resolved"
+                            ? "bg-green-100 text-green-700"
+                            : r.status === "Rejected"
+                            ? "bg-red-100 text-red-600"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {r.status || "Pending"}
+                      </span>
+                      {r.adminResponse && (
+                        <p className="text-xs text-gray-600 mt-2 italic text-right">
+                          💬 {r.adminResponse}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-gray-600 italic text-center mt-4">
+            No reports yet. Start by submitting your first one.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -32,6 +32,19 @@ export const login = (credentials) => {
   return axios.post("http://localhost:8080/api/auth/login", credentials);
 };
 
+export const uploadProviderDocument = (providerId, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return axios.post(
+    `http://localhost:8080/api/auth/upload-documents/${providerId}`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+};
+
+
 //
 // =====================
 // SERVICE APIs (PROVIDER only, token required)
@@ -53,6 +66,9 @@ export const getUserById = (id) => API.get(`/users/id/${id}`);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const deleteUser = (id) => API.delete(`/users/${id}`);
 export const getUserByEmail = (email) => API.get(`/users/email/${email}`);
+// 👤 Get all customers (for providers or admin)
+export const getCustomers = () => API.get("/users/customers");
+
 
 
 // BOOKING APIs
@@ -117,3 +133,46 @@ export const sendMessageAPI = (messageData) =>
 // 📥 Get all messages between logged-in user and another user
 export const getMessagesWithUser = (userId) =>
   API.get(`/messages/between/${userId}`);
+
+export const verifyProvider = (providerId) => {
+  return API.put(`/users/${providerId}/verify`);
+};
+
+export const getAllDocuments = () => API.get("/documents/all");
+export const approveDocument = (id) => API.put(`/documents/approve/${id}`);
+export const deleteDocument = (id) => API.delete(`/documents/${id}`);
+export const rejectDocument = (id) => API.put(`/documents/reject/${id}`);
+
+
+//
+// =====================
+// REPORT APIs (Dispute Management)
+// =====================
+
+// 📝 Create a new report (Customer or Provider)
+export const createReport = (userId, targetType, targetId, reason) => {
+  return API.post("/reports/create", null, {
+    params: { userId, targetType, targetId, reason },
+  });
+};
+
+// 📋 Get all reports (Admin only)
+export const getAllReports = () => API.get("/reports/all");
+
+// 🔍 Get reports filtered by target type (BOOKING, PROVIDER, CUSTOMER)
+export const getReportsByType = (type) => API.get(`/reports/type/${type}`);
+
+// 🧾 Get reports filtered by status (PENDING, RESOLVED, REJECTED)
+export const getReportsByStatus = (status) => API.get(`/reports/status/${status}`);
+
+// 👤 Get reports submitted by a specific user
+export const getReportsByUser = (userId) => API.get(`/reports/user/${userId}`);
+
+// ✏️ Update report status (Admin)
+export const updateReportStatus = (reportId, status) =>
+  API.put(`/reports/update-status/${reportId}`, null, {
+    params: { status },
+  });
+
+// 🗑️ Delete a report (Admin)
+export const deleteReport = (reportId) => API.delete(`/reports/${reportId}`);

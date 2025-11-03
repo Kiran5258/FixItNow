@@ -1,7 +1,6 @@
 package infosys.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,6 +13,8 @@ public class AuthResponse {
     private String token;
     private String role;
     private String message;
+    private Long userId;
+    private Boolean verified; // ✅ NEW FIELD to indicate provider verification status
 
     // Constructor for login (token + role)
     public AuthResponse(String token, String role) {
@@ -25,5 +26,11 @@ public class AuthResponse {
     // Constructor for register (message only)
     public AuthResponse(String message) {
         this.message = message;
+    }
+
+    // Constructor for register with message + userId
+    public AuthResponse(String message, Long userId) {
+        this.message = message;
+        this.userId = userId;
     }
 }

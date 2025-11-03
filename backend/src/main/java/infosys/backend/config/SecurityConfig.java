@@ -41,6 +41,12 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
             .requestMatchers("/reviews/provider/**").authenticated()  // any logged-in user can view reviews
             .requestMatchers("/reviews/add").authenticated()    
             .requestMatchers("/api/messages/**").authenticated()  
+            .requestMatchers("/api/documents/**").authenticated()
+            .requestMatchers("/uploads/**").permitAll()  // allow static uploads access
+            .requestMatchers("/api/reports/**").authenticated()
+
+
+
                 // all user management require login
             // Any other endpoints require authentication
             .requestMatchers("/ws/**").permitAll()       // allow handshake endpoints

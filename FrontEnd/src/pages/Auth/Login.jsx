@@ -36,31 +36,44 @@ export default function Login() {
       // 🔑 Call backend login API
       const res = await login({ email, password });
 
-      // Backend returns { token, role }
-      const { token, role } = res.data;
+      // Expected backend response:
+      // { token, role, verified, message, userId }
+      const { token, role, verified, message, userId } = res.data;
 
-      // Save token for authenticated requests
+      // ✅ Handle unverified provider
+      if (role === "PROVIDER" && verified === false) {
+        setError(
+          message ||
+            "Your provider account is pending admin verification. Please wait until approved."
+        );
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Save token for authenticated requests
       localStorage.setItem("token", token);
 
       // Build logged-in user object
       const loggedInUser = {
         email,
         role,
-        hasProfile: role === "PROVIDER" ? false : true, // assume provider profile incomplete until they add services
+        userId,
+        verified,
+        hasProfile: role === "PROVIDER" ? false : true,
       };
 
-      // Save in global context
+      // ✅ Save in global context
       UpdateUser(loggedInUser);
 
       // ✅ Redirect logic
-      if (role === "PROVIDER" ) {
+      if (role === "PROVIDER") {
         navigate("/provider-dashboard");
       } else if (role === "ADMIN") {
         navigate("/admin-dashboard");
       } else if (role === "CUSTOMER") {
         navigate("/customer-dashboard");
       } else {
-        navigate("/"); // fallback → home/dashboard
+        navigate("/");
       }
     } catch (err) {
       console.error("Login failed:", err);
@@ -136,7 +149,11 @@ export default function Login() {
             </button>
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && (
+            <p className="text-red-400 text-sm text-center bg-black/30 p-2 rounded">
+              {error}
+            </p>
+          )}
 
           {/* Submit Button */}
           <button
