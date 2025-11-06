@@ -5,7 +5,6 @@ const API = axios.create({
   baseURL: "http://localhost:8080/api",
 });
 
-// 🔑 Attach JWT token automatically for protected APIs
 API.interceptors.request.use(
   (config) => {
     // Skip attaching token for auth routes
@@ -117,8 +116,10 @@ export const deleteReview =  (reviewId) => {
   API.delete(`/reviews/${reviewId}`);
 };
 
+// Get review tied to a booking id
 export const getReviewByBookingId = (bookingId) => {
-  return axios.get(`/api/reviews/booking/${bookingId}`);
+  // Use the API client so baseURL and auth header are applied
+  return API.get(`/reviews/booking/${bookingId}`);
 };
 
 //
@@ -176,3 +177,24 @@ export const updateReportStatus = (reportId, status) =>
 
 // 🗑️ Delete a report (Admin)
 export const deleteReport = (reportId) => API.delete(`/reports/${reportId}`);
+
+//
+// =====================
+// ADMIN ANALYTICS APIs
+// =====================
+
+// 📊 Get overall summary (users, bookings, etc.)
+export const getAnalyticsSummary = () => API.get("/admin/analytics/summary");
+
+// 📅 Get monthly bookings trend
+export const getBookingsPerMonth = () => API.get("/admin/analytics/bookings/monthly");
+
+// 👑 Get top service providers
+export const getTopProviders = () => API.get("/admin/analytics/top-providers");
+
+// 🧾 Get top service categories
+export const getTopServices = () => API.get("/admin/analytics/top-services");
+
+// 📍 Get location-wise booking trends
+export const getLocationTrends = () => API.get("/admin/analytics/locations");
+

@@ -1,4 +1,10 @@
-function ServicesCardFull({ services, setServices }) {
+import React, { useState } from 'react';
+import { GiHammerNails, GiElectric, GiBroom } from 'react-icons/gi';
+import { updateService, deleteService } from '../../../../services/api';
+
+const rustBrown = "#6e290cff";
+
+export default function ServicesCardFull({ services, setServices }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {services.map((service) => (
@@ -8,16 +14,16 @@ function ServicesCardFull({ services, setServices }) {
   );
 }
 
-// Service Card with Modal
 function ServiceCard({ service, services, setServices }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ ...service });
 
   const icon =
-  (service.category || "").toLowerCase() === "carpentry" ? <GiHammerNails className="text-white" /> :
+    (service.category || "").toLowerCase() === "carpentry" ? <GiHammerNails className="text-white" /> :
     (service.category || "").toLowerCase() === "electrical" ? <GiElectric className="text-white" /> :
     (service.category || "").toLowerCase() === "cleaning" ? <GiBroom className="text-white" /> :
     <GiHammerNails className="text-white" />;
+
   const handleSave = async () => {
     try {
       await updateService(service.id, editData);
@@ -34,7 +40,6 @@ function ServiceCard({ service, services, setServices }) {
     try {
       await deleteService(service.id);
       console.log("Deleting service id:", service.id);
-
       setServices(services.filter((s) => s.id !== service.id));
     } catch (err) {
       console.error(err);
@@ -112,4 +117,3 @@ function ServiceCard({ service, services, setServices }) {
 </>
   );
 }
-export default ServicesCardFull;
