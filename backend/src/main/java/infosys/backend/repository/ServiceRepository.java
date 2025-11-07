@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ServiceRepository extends JpaRepository<ServiceProvider, Long> {
 
@@ -21,6 +22,9 @@ public interface ServiceRepository extends JpaRepository<ServiceProvider, Long> 
 @Modifying
 @Query("DELETE FROM ServiceProvider s WHERE s.provider.id = :userId")
 void deleteByProviderId(@Param("userId") Long userId);
-
+@Query("SELECT s.location AS location, COUNT(b.id) AS bookingCount " +
+           "FROM Booking b JOIN b.service s " +
+           "GROUP BY s.location ORDER BY bookingCount DESC")
+    List<Map<String, Object>> findBookingsByLocation();
     
 }

@@ -31,13 +31,14 @@ public class UserController {
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/providers")
-    public ResponseEntity<List<User>> getAllProviders() {
-        List<User> providers = userService.getAllUsers().stream()
-                .filter(u -> u.getRole().name().equals("PROVIDER"))
-                .toList();
-        return ResponseEntity.ok(providers);
-    }
+@GetMapping("/providers")
+public ResponseEntity<List<User>> getAllProviders() {
+    List<User> providers = userService.getAllUsers().stream()
+            .filter(u -> u.getRole() == Role.PROVIDER && u.isVerified())
+            .toList();
+    return ResponseEntity.ok(providers);
+}
+
 
     @PreAuthorize("hasRole('PROVIDER') or hasRole('CUSTOMER') or hasRole('ADMIN')")
     @GetMapping("/me")
@@ -117,6 +118,28 @@ public ResponseEntity<Map<String, Object>> getUserStatus(@PathVariable Long id) 
     boolean online = presenceService.isUserOnline(id);
     return ResponseEntity.ok(Map.of("online", online));
 }
+
+@PreAuthorize("hasRole('ADMIN')")
+@PutMapping("/{id}/verify")
+public ResponseEntity<String> verifyProvider(@PathVariable Long id) {
+    User user = userService.getUserById(id);
+
+    if (user.getRole() != Role.PROVIDER) {
+        return ResponseEntity.badRequest().body("User is not a provider");
+    }
+
+    user.setVerified(true);
+    userRepository.save(user);
+
+    return ResponseEntity.ok("Provider verified successfully");
+}
+@GetMapping("/customers")
+public ResponseEntity<List<User>> getAllCustomers() {
+    List<User> customers = userService.getUsersByRole("CUSTOMER");
+    return ResponseEntity.ok(customers);
+}
+
+
 
 
 }

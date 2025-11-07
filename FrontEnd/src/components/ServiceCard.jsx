@@ -1,123 +1,115 @@
-import React, { useState, useEffect } from "react";
-import { FiMapPin, FiStar, FiUser } from "react-icons/fi";
-import { getReviewsByProvider, getProviderAverageRating, addReview } from "../services/api";
+function ServicesCardFull({ services, setServices }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {services.map((service) => (
+        <ServiceCard key={service.id} service={service} setServices={setServices} services={services} />
+      ))}
+    </div>
+  );
+}
 
-export default function ServiceDetailModal({ service, customer, onClose, onBook }) {
-  const [reviews, setReviews] = useState([]);
-  const [averageRating, setAverageRating] = useState(0);
-  const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
-  const [loading, setLoading] = useState(true);
+// Service Card with Modal
+function ServiceCard({ service, services, setServices }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({ ...service });
 
-  useEffect(() => {
-    fetchReviews();
-  }, [service]);
-
-  const fetchReviews = async () => {
+  const icon =
+  (service.category || "").toLowerCase() === "carpentry" ? <GiHammerNails className="text-white" /> :
+    (service.category || "").toLowerCase() === "electrical" ? <GiElectric className="text-white" /> :
+    (service.category || "").toLowerCase() === "cleaning" ? <GiBroom className="text-white" /> :
+    <GiHammerNails className="text-white" />;
+  const handleSave = async () => {
     try {
-      setLoading(true);
-      const res = await getReviewsByProvider(service.providerId || service.id);
-      setReviews(res.data || []);
-      const avgRes = await getProviderAverageRating(service.providerId || service.id);
-      setAverageRating(avgRes.data || 0);
+      await updateService(service.id, editData);
+      setServices(services.map((s) => (s.id === service.id ? editData : s)));
+      setIsEditing(false);
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
+      alert("Failed to update service.");
     }
   };
 
-  const handleSubmitReview = async () => {
-    if (!newReview.comment.trim()) return alert("Please write a comment.");
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this service?")) return;
     try {
-      await addReview({
-        customer: { id: customer.id },
-        provider: { id: service.providerId || service.id },
-        service: { id: service.id },
-        rating: newReview.rating,
-        comment: newReview.comment,
-      });
-      setNewReview({ rating: 5, comment: "" });
-      fetchReviews();
+      await deleteService(service.id);
+      console.log("Deleting service id:", service.id);
+
+      setServices(services.filter((s) => s.id !== service.id));
     } catch (err) {
       console.error(err);
-      alert("Failed to submit review.");
+      alert("Failed to delete service.");
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex justify-center items-start pt-20 z-50 overflow-auto">
-      <div className="bg-white rounded-2xl p-6 w-[90%] max-w-2xl shadow-lg relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 font-bold text-xl">×</button>
-
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">{service.subcategory}</h2>
-        <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-          <FiUser /> {service.providerName || service.name}
-        </p>
-        {service.location && (
-          <p className="text-sm text-gray-600 mb-2 flex items-center gap-1">
-            <FiMapPin /> {service.location}
-          </p>
-        )}
-
-        <p className="text-gray-700 mb-3">{service.description}</p>
-        <p className="font-bold text-blue-600 text-lg mb-3">₹{service.price}</p>
-        <p className="text-sm font-semibold mb-3">Average Rating: {averageRating.toFixed(1)} ⭐</p>
-
-        {/* Book Now */}
-        <button
-          onClick={() => onBook(service)}
-          className={`w-full py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold shadow-md mb-4`}
-        >
-          Book Now
-        </button>
-
-        {/* Reviews */}
-        <div className="mt-4">
-          <h3 className="text-lg font-semibold mb-2">Reviews</h3>
-          {loading ? (
-            <p className="text-gray-500 text-sm">Loading reviews...</p>
-          ) : reviews.length === 0 ? (
-            <p className="text-gray-500 text-sm">No reviews yet.</p>
-          ) : (
-            reviews.map((r) => (
-              <div key={r.id} className="border-l-2 border-purple-400 pl-2 py-1 mb-2">
-                <p className="font-semibold text-gray-800 text-sm">★ {r.rating}</p>
-                <p className="text-gray-700 text-sm">{r.comment}</p>
-                <p className="text-xs text-gray-400">By: {r.customer?.name || "Anonymous"}</p>
-              </div>
-            ))
-          )}
-
-          {/* Add Review */}
-          <div className="mt-2 border-t pt-2">
-            <p className="text-sm font-semibold mb-1">Add Your Review</p>
-            <div className="flex items-center gap-2 mb-2">
-              <label className="text-sm">Rating:</label>
-              <select
-                value={newReview.rating}
-                onChange={(e) => setNewReview({ ...newReview, rating: parseInt(e.target.value) })}
-                className="border px-2 py-1 rounded text-sm"
-              >
-                {[5, 4, 3, 2, 1].map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-            <textarea
-              value={newReview.comment}
-              onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-              className="border w-full px-3 py-2 rounded mb-2 text-sm"
-              placeholder="Write your review..."
-            />
-            <button
-              onClick={handleSubmitReview}
-              className="w-full py-2 bg-purple-600 text-white font-semibold rounded hover:bg-purple-700 text-sm"
-            >
-              Submit Review
-            </button>
+    <>
+      <div className="flex flex-col justify-between bg-white border rounded-xl shadow-lg hover:shadow-xl transition p-5 border-gray-200" style={{ borderColor: rustBrown + "40" }}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-r from-black to-[#B7410E] shadow-lg">{icon}</div>
+          <div className="flex-1">
+            <h3 className="font-bold text-lg">{service.category} - {service.subcategory}</h3>
+            <p className="text-sm text-black/70">Provider: {service.providerName}</p>
+          </div>
+        </div>
+        <p className="text-sm text-black/70 mb-4">{service.description}</p>
+        <div className="flex justify-between items-center">
+          <span className="font-semibold text-black text-lg">₹{service.price}</span>
+          <div className="flex gap-2">
+            <button onClick={() => setIsEditing(true)} className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 transition">Edit</button>
+            <button onClick={handleDelete} className="bg-[#B7410E] text-white px-3 py-1 rounded hover:bg-[#8a300b] transition">Delete</button>
           </div>
         </div>
       </div>
+
+      {/* Modal */}
+      {isEditing && (
+  <div 
+    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    onClick={() => setIsEditing(false)}
+  >
+    <div 
+      className="bg-white p-6 rounded-xl w-full max-w-md shadow-lg relative"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Close Button */}
+      <button
+        onClick={() => setIsEditing(false)}
+        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-lg font-bold"
+      >
+        &times;
+      </button>
+
+      <h2 className="text-xl font-semibold mb-4">Edit Service</h2>
+      <input
+        type="text"
+        value={editData.description}
+        onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+        className="border px-3 py-2 rounded w-full mb-3"
+        placeholder="Description"
+      />
+      <input
+        type="number"
+        value={editData.price}
+        onChange={(e) => setEditData({ ...editData, price: parseFloat(e.target.value) })}
+        className="border px-3 py-2 rounded w-full mb-3"
+        placeholder="Price"
+      />
+      <input
+        type="text"
+        value={editData.availability}
+        onChange={(e) => setEditData({ ...editData, availability: e.target.value })}
+        className="border px-3 py-2 rounded w-full mb-4"
+        placeholder="Availability"
+      />
+      <div className="flex justify-end gap-2">
+        <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Save</button>
+        <button onClick={() => setIsEditing(false)} className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500">Cancel</button>
+      </div>
     </div>
+  </div>
+)}
+</>
   );
 }
+export default ServicesCardFull;

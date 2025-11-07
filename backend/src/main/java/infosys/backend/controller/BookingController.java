@@ -59,7 +59,7 @@ public class BookingController {
     }
 
     // ✅ Get all bookings (Admin only)
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasRole('CUSTOMER') or hasRole('PROVIDER') or hasRole('ADMIN')")
 @GetMapping("/all")
 public List<Booking> getAllBookings() {
     return bookingService.getAllBookings();
