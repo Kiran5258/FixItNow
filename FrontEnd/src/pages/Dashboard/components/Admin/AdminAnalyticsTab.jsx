@@ -18,15 +18,19 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
 } from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const chartColors = [
-  "#6e290c", // Rust Brown
-  "#d4a373", // Light Brown
-  "#f4a261", // Orange
-  "#e76f51", // Red-Orange
-  "#2a9d8f", // Teal
-  "#264653", // Dark Blue-Green
+  "#6e290c",
+  "#d4a373",
+  "#f4a261",
+  "#e76f51",
+  "#2a9d8f",
+  "#264653",
 ];
 
 export default function AdminAnalyticsTab({ showOnly }) {
@@ -35,43 +39,154 @@ export default function AdminAnalyticsTab({ showOnly }) {
   const [topProviders, setTopProviders] = useState([]);
   const [topServices, setTopServices] = useState([]);
   const [locations, setLocations] = useState([]);
-  const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchAnalytics() {
-      try {
-        const [summaryRes, trendRes, providersRes, servicesRes, locRes] = await Promise.all([
+  const allMonths = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const fetchAnalytics = async () => {
+    try {
+      const [summaryRes, trendRes, providersRes, servicesRes, locRes] =
+        await Promise.all([
           getAnalyticsSummary(),
           getBookingsPerMonth(),
           getTopProviders(),
           getTopServices(),
           getLocationTrends(),
         ]);
+        console.log("📊 Raw Summary Response:", summaryRes.data);
+console.log("👥 Top Providers Response:", providersRes.data);
+console.log("🧍‍♂️ Top Services Response:", servicesRes.data);
+console.log("📍 Location Trends Response:", locRes.data);
 
-        setSummary(summaryRes.data || {});
-        setBookingsTrend((trendRes.data || []).slice(-12));
-        setTopProviders((providersRes.data || []).slice(0, 6));
-        setTopServices((servicesRes.data || []).slice(0, 6));
-        setLocations((locRes.data || []).slice(0, 8));
 
-        const growth = Math.floor(Math.random() * 15) + 5;
-        setPrediction(`Next month bookings expected to grow by +${growth}% 📈`);
-      } catch (err) {
-        console.error("Failed to fetch analytics:", err);
-      } finally {
-        setLoading(false);
-      }
+      const raw = summaryRes.data || {};
+
+      // ✅ Normalize keys (handle multiple possible backend responses)
+      const normalizedSummary = {
+        totalBookings:
+          raw.totalBookings ?? raw.bookings ?? raw.total ?? 0,
+        activeProviders:
+          raw.activeProviders ?? raw.providers ?? raw.activeProviderCount ?? 0,
+        totalCustomers:
+          raw.totalCustomers ?? raw.customers ?? raw.activeCustomers ?? 0,
+        pendingProviders:
+          raw.pendingProviders ?? raw.pending ?? raw.pendingCount ?? 0,
+      };
+
+      const trendData = trendRes.data || [];
+      const fullTrend = allMonths.map((month) => {
+        const found = trendData.find((t) => t.month === month);
+        return { month, count: found ? found.count : 0 };
+      });
+
+      setSummary({
+  totalBookings: raw.totalBookings ?? 0,
+  completedBookings: raw.completedBookings ?? 0,
+  totalProviders: raw.totalProviders ?? 0,
+  totalUsers: raw.totalUsers ?? 0,
+ 
+});
+      setBookingsTrend(fullTrend);
+      setTopProviders(providersRes.data || []);
+      setTopServices(servicesRes.data || []);
+      setLocations(locRes.data || []);
+    } catch (err) {
+      console.error("❌ Failed to fetch analytics:", err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchAnalytics();
+    const interval = setInterval(fetchAnalytics, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading)
     return (
       <div className="flex justify-center items-center h-64 text-gray-500 text-lg">
-        Loading analytics data...
+        Loading real-time analytics...
       </div>
     );
+
+  // ✅ Summary KPI Cards
+  // ✅ Summary KPI Cards
+const summaryCards = [
+  { label: "Total Bookings", value: summary.totalBookings || 0, color: "#6e290c" },
+  { label: "Completed Bookings", value: summary.completedBookings || 0, color: "#2a9d8f" },
+  { label: "Total Providers", value: summary.totalProviders || 0, color: "#d4a373" },
+  { label: "Total Users", value: summary.totalUsers || 0, color: "#e76f51" },
+ 
+];
+
+
+  const downloadReport = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Admin Analytics Report", 14, 15);
+    doc.setFontSize(11);
+
+    doc.text("📋 Summary Overview", 14, 25);
+    const summaryData = summaryCards.map((c) => [c.label, c.value]);
+    autoTable(doc, { startY: 30, head: [["Metric", "Value"]], body: summaryData });
+
+    let nextY = doc.lastAutoTable.finalY + 10;
+    doc.text("📅 Monthly Bookings Trend", 14, nextY);
+    nextY += 5;
+    autoTable(doc, {
+      startY: nextY,
+      head: [["Month", "Bookings"]],
+      body: bookingsTrend.map((b) => [b.month, b.count]),
+    });
+
+    nextY = doc.lastAutoTable.finalY + 10;
+    doc.text("📈 Top Booked Services", 14, nextY);
+    nextY += 5;
+    autoTable(doc, {
+      startY: nextY,
+      head: [["Service Category", "Total Bookings"]],
+      body: topServices.map((s) => [s.category, s.totalBookings]),
+    });
+
+    nextY = doc.lastAutoTable.finalY + 10;
+    doc.text("👑 Top Providers", 14, nextY);
+    nextY += 5;
+    autoTable(doc, {
+      startY: nextY,
+      head: [["Provider", "Total Bookings"]],
+      body: topProviders.map((p) => [p.provider, p.totalBookings]),
+    });
+
+    nextY = doc.lastAutoTable.finalY + 10;
+    doc.text("📍 Top Booking Locations", 14, nextY);
+    nextY += 5;
+    autoTable(doc, {
+      startY: nextY,
+      head: [["Location", "Booking Count"]],
+      body: locations.map((l) => [l.location, l.bookingCount]),
+    });
+
+    doc.text(
+      `Generated on: ${new Date().toLocaleString()}`,
+      14,
+      doc.internal.pageSize.height - 10
+    );
+    doc.save("Analytics_Report.pdf");
+  };
+
+  const downloadCSV = () => {
+    const headers = ["Metric,Value\n"];
+    const rows = summaryCards.map((c) => `${c.label},${c.value}`).join("\n");
+    const blob = new Blob([headers + rows], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Analytics_Report.csv";
+    link.click();
+  };
 
   const charts = [
     {
@@ -80,25 +195,14 @@ export default function AdminAnalyticsTab({ showOnly }) {
       subtitle: "Category-wise performance overview",
       chart: (
         <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={topServices.length ? topServices : []}>
+          <BarChart data={topServices}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="category" tick={{ fill: "#4b2c15" }} />
             <YAxis tick={{ fill: "#4b2c15" }} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#fff7ed",
-                border: "1px solid #fb923c",
-                borderRadius: "8px",
-              }}
-            />
-            <Bar
-              dataKey="totalBookings"
-              radius={[6, 6, 0, 0]}
-              fill="#fb923c"
-              barSize={35}
-            >
-              {topServices.map((_, index) => (
-                <Cell key={index} fill={chartColors[index % chartColors.length]} />
+            <Tooltip contentStyle={{ backgroundColor: "#fff7ed", border: "1px solid #fb923c", borderRadius: "8px" }} />
+            <Bar dataKey="totalBookings" radius={[6, 6, 0, 0]} barSize={35}>
+              {topServices.map((_, i) => (
+                <Cell key={i} fill={chartColors[i % chartColors.length]} />
               ))}
             </Bar>
           </BarChart>
@@ -112,27 +216,12 @@ export default function AdminAnalyticsTab({ showOnly }) {
       chart: (
         <ResponsiveContainer width="100%" height={280}>
           <PieChart>
-            <Pie
-              data={topProviders.length ? topProviders : []}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={100}
-              dataKey="totalBookings"
-              nameKey="provider"
-              label
-            >
-              {topProviders.map((_, index) => (
-                <Cell key={index} fill={chartColors[index % chartColors.length]} />
+            <Pie data={topProviders} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="totalBookings" nameKey="provider" label>
+              {topProviders.map((_, i) => (
+                <Cell key={i} fill={chartColors[i % chartColors.length]} />
               ))}
             </Pie>
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#fff7ed",
-                border: "1px solid #fb923c",
-                borderRadius: "8px",
-              }}
-            />
+            <Tooltip />
             <Legend verticalAlign="bottom" />
           </PieChart>
         </ResponsiveContainer>
@@ -140,32 +229,23 @@ export default function AdminAnalyticsTab({ showOnly }) {
     },
     {
       key: "monthlyBookings",
-      title: "📅 Monthly Bookings Trend",
+      title: "📅 Monthly Booking Trends",
       subtitle: "Bookings over the past 12 months",
       chart: (
         <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={bookingsTrend.length ? bookingsTrend : []}>
+          <LineChart data={bookingsTrend}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="month" tick={{ fill: "#4b2c15" }} />
             <YAxis tick={{ fill: "#4b2c15" }} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#fff7ed",
-                border: "1px solid #fb923c",
-                borderRadius: "8px",
-              }}
-            />
-            <Bar
+            <Tooltip />
+            <Line
+              type="monotone"
               dataKey="count"
-              radius={[6, 6, 0, 0]}
-              fill="#34d399"
-              barSize={35}
-            >
-              {bookingsTrend.map((_, index) => (
-                <Cell key={index} fill={chartColors[index % chartColors.length]} />
-              ))}
-            </Bar>
-          </BarChart>
+              stroke="#6e290c"
+              strokeWidth={3}
+              dot={{ r: 4, stroke: "#6e290c", fill: "#d4a373" }}
+            />
+          </LineChart>
         </ResponsiveContainer>
       ),
     },
@@ -175,24 +255,14 @@ export default function AdminAnalyticsTab({ showOnly }) {
       subtitle: "Cities with highest activity",
       chart: (
         <ResponsiveContainer width="100%" height={280}>
-          <BarChart layout="vertical" data={locations.length ? locations : []}>
+          <BarChart layout="vertical" data={locations}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis type="number" tick={{ fill: "#4b2c15" }} />
-            <YAxis dataKey="location" type="category" tick={{ fill: "#4b2c15" }} width={120} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#fff7ed",
-                border: "1px solid #fb923c",
-                borderRadius: "8px",
-              }}
-            />
-            <Bar
-              dataKey="bookingCount"
-              radius={[0, 8, 8, 0]}
-              barSize={25}
-            >
-              {locations.map((_, index) => (
-                <Cell key={index} fill={chartColors[index % chartColors.length]} />
+            <XAxis type="number" />
+            <YAxis dataKey="location" type="category" width={120} />
+            <Tooltip />
+            <Bar dataKey="bookingCount" radius={[0, 8, 8, 0]} barSize={25}>
+              {locations.map((_, i) => (
+                <Cell key={i} fill={chartColors[i % chartColors.length]} />
               ))}
             </Bar>
           </BarChart>
@@ -201,29 +271,56 @@ export default function AdminAnalyticsTab({ showOnly }) {
     },
   ];
 
-  const filteredCharts = showOnly
-    ? charts.filter((c) => c.key === showOnly)
-    : charts.filter((c) => c.key !== "locations"); // Hide locations if showOnly not passed
+  const filteredCharts = showOnly ? charts.filter((c) => c.key === showOnly) : charts;
 
   return (
     <div className="space-y-10 animate-fadeIn">
       {!showOnly && (
-        <div className="bg-gradient-to-r from-[#ffedd5] to-[#fff7ed] p-6 rounded-2xl shadow-lg border border-[#fb923c] animate-fadeIn">
-          <h2 className="text-2xl font-bold text-[#b45309] mb-2">🔮 Smart Prediction</h2>
-          <p className="text-gray-800 text-lg">{prediction}</p>
-          <p className="text-gray-600 text-sm mt-1">
-            Based on the previous 3-month performance trends.
-          </p>
+        <div className="flex items-center justify-start gap-70 mb-4">
+          <h1 className="text-2xl font-semibold text-[#6e290c]">📊 Admin Analytics Dashboard</h1>
+          <div className="flex gap-2 ml-4">
+            <button
+              onClick={downloadReport}
+              className="bg-[#6e290c] text-white px-4 py-2 rounded-lg shadow hover:bg-[#5a210a]"
+            >
+              Download PDF
+            </button>
+            <button
+              onClick={downloadCSV}
+              className="bg-[#d4a373] text-white px-4 py-2 rounded-lg shadow hover:bg-[#c38b5a]"
+            >
+              Download CSV
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!showOnly && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {summaryCards.map((card, i) => (
+            <div
+              key={i}
+              className="bg-white shadow-lg rounded-2xl p-5 border-l-4"
+              style={{ borderColor: card.color }}
+            >
+              <h3 className="text-sm text-gray-500">{card.label}</h3>
+              <p className="text-2xl font-bold" style={{ color: card.color }}>
+                {card.value}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
       <div
-        className={`grid ${filteredCharts.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"} gap-8 mt-10`}
+        className={`grid ${
+          filteredCharts.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
+        } gap-8 mt-6`}
       >
         {filteredCharts.map((card, i) => (
           <div
             key={i}
-            className="bg-gradient-to-br from-[#fff7ed] to-[#fff1f0] rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 border border-[#fcd5b5] p-6 relative overflow-hidden h-[400px]"
+            className="bg-gradient-to-br from-[#fff7ed] to-[#fff1f0] rounded-3xl shadow-xl border border-[#fcd5b5] p-6 relative overflow-hidden h-[400px]"
           >
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -231,7 +328,7 @@ export default function AdminAnalyticsTab({ showOnly }) {
                 <p className="text-sm text-[#92400e]">{card.subtitle}</p>
               </div>
               <div className="bg-[#fb923c] text-white px-3 py-1 rounded-full text-xs shadow">
-                Analytics
+                Live Data
               </div>
             </div>
             <div className="h-[2px] bg-gradient-to-r from-[#fcd5b5] to-transparent mb-4"></div>

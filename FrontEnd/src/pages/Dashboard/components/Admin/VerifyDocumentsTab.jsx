@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircleIcon, TrashIcon } from '@heroicons/react/24/solid';
-import { getAllDocuments, approveDocument, deleteDocument } from '../../../../services/api';
+import { CheckCircleIcon, TrashIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { getAllDocuments, approveDocument, deleteDocument, rejectDocument } from '../../../../services/api';
 
 export default function VerifyDocumentsTab() {
   const [documents, setDocuments] = useState([]);
@@ -24,12 +24,27 @@ export default function VerifyDocumentsTab() {
     try {
       await approveDocument(id);
       setDocuments((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, approved: true } : d))
+        prev.map((d) => (d.id === id ? { ...d, approved: true, rejected: false } : d))
       );
       alert('Provider verified successfully!');
     } catch (err) {
       console.error(err);
       alert('Approval failed');
+    }
+  };
+
+  const handleReject = async (id) => {
+    const reason = window.prompt('Enter rejection reason:');
+    if (!reason) return;
+    try {
+      await rejectDocument(id, reason);
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, approved: false, rejected: true, rejectionReason: reason } : d))
+      );
+      alert('Document rejected successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Rejection failed');
     }
   };
 
@@ -77,19 +92,32 @@ export default function VerifyDocumentsTab() {
                 View Document
               </a>
 
-              <div className="flex justify-between items-center  pt-2 border-t border-gray-200">
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200 space-x-2">
                 {doc.approved ? (
                   <span className="flex items-center text-green-600 font-semibold">
                     <CheckCircleIcon className="w-5 h-5 mr-1" />
                     Approved
                   </span>
+                ) : doc.rejected ? (
+                  <span className="flex items-center text-red-600 font-semibold">
+                    <XCircleIcon className="w-5 h-5 mr-1" />
+                    Rejected
+                  </span>
                 ) : (
-                  <button
-                    onClick={() => handleApprove(doc.id)}
-                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                  >
-                    Approve
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprove(doc.id)}
+                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(doc.id)}
+                      className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                    >
+                      Reject
+                    </button>
+                  </div>
                 )}
 
                 <TrashIcon
@@ -97,6 +125,8 @@ export default function VerifyDocumentsTab() {
                   className="w-5 h-5 text-red-600 cursor-pointer hover:text-red-800"
                 />
               </div>
+
+             
             </div>
           ))}
         </div>

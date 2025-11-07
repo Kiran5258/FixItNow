@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiHome, FiUsers, FiLogOut, FiClock, FiXCircle,FiCheckCircle,
+  FiBarChart2,
 } from "react-icons/fi";
 import { BiClipboard, BiUserCircle } from "react-icons/bi";
 import { MdAdminPanelSettings } from "react-icons/md";
@@ -11,8 +12,9 @@ import { AiOutlineCheckCircle, } from "react-icons/ai";
 import { GiElectric, GiHammerNails, GiBroom } from "react-icons/gi";
 import { CheckCircleIcon, TrashIcon } from "@heroicons/react/24/solid";
 import {
-  getAllUsers, deleteUser, updateUser, getAllServices,
-  updateService, deleteService, getAllBookings,getAllDocuments, approveDocument, deleteDocument,
+  getAllUsers, getAllServices,
+  getAllBookings,
+
   
 } from "../../services/api";
 
@@ -124,6 +126,7 @@ useEffect(() => {
   const sidebarItems = [
    
     { name: "Home", icon: <FiHome className="text-white" />, key: "home" },
+    { name: "Analytics", icon: <FiBarChart2 className="text-white" />, key: "analytics" },
     { name: "Users", icon: <BiUserCircle className="text-white" />, key: "users" },
     { name: "Services", icon: <MdAdminPanelSettings className="text-white" />, key: "services" },
     { name: "Chat", icon: <FiUsers className="text-white" />, key: "chat" },
@@ -175,8 +178,6 @@ useEffect(() => {
         <main className="flex-1 p-6 overflow-y-auto">
        {activeTab === "home" && (
   <div className="space-y-10">
-    
-
     {/* ⚡ Key Metrics Summary */}
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <MetricCard
@@ -201,65 +202,85 @@ useEffect(() => {
       />
     </div>
 
-     
-  {/* 🧾 Recent Bookings & 📊 Booking Chart Side by Side */}
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-  {/* Left: Recent Bookings */}
-  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex flex-col h-full">
-    
+    {/* 🧾 Main Dashboard Panels */}
+    <div className="flex flex-col lg:flex-row gap-6">
+      {/* Left Panel - Recent Bookings */}
+      <div className="lg:w-2/3 bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex flex-col">
+        
     <div className="flex-1">
       <BookingsCard bookings={bookings.slice(0, 5)} loading={loadingBookings} />
     </div>
-  </div>
+      </div>
 
-  {/* Right: Top Booking Locations */}
+      {/* Right Side - Two Stacked Panels */}
+      <div className="lg:w-1/3 flex flex-col gap-6">
+        {/* Booking Stats with animated bars */}
 <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex flex-col">
+  <h2 className="text-xl font-semibold mb-4">Booking Stats</h2>
+  {["PENDING", "COMPLETED", "CANCELLED"].map((status) => {
+    const count = bookings.filter(b => b.status === status).length;
+    const color = status === "PENDING" ? "bg-yellow-400" : status === "COMPLETED" ? "bg-green-500" : "bg-red-500";
+    const widthPercent = bookings.length ? (count / bookings.length) * 100 : 0;
 
-  {/* Make sure parent has height so ResponsiveContainer works */}
-  <div className="flex-1 min-h-[400px] w-full">
-    <AdminAnalyticsTab showOnly="locations" />
+    return (
+      <div key={status} className="mb-3">
+        <div className="flex justify-between mb-1">
+          <span>{status}</span>
+          <span className="font-semibold">{count}</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-3">
+          <div
+            className={`${color} h-3 rounded-full transition-all duration-1000`}
+            style={{ width: `${widthPercent}%` }}
+          ></div>
+        </div>
+      </div>
+    );
+  })}
+</div>
+
+        
+          
+      {/* Quick Info */}
+<div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex flex-col">
+  <h2 className="text-xl font-semibold mb-4">Quick Info</h2>
+  <div className="grid grid-cols-1 gap-4">
+    {/* Total Services */}
+    <div className="flex items-center gap-4 p-3 rounded-lg bg-yellow-50">
+      <div className="bg-yellow-200 p-3 rounded-full">
+        <GiHammerNails className="text-yellow-700 text-2xl" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm text-gray-500">Total Services</p>
+        <p className="font-semibold text-lg">{services.length}</p>
+      </div>
+    </div>
+
+    {/* Pending Bookings */}
+    <div className="flex items-center gap-4 p-3 rounded-lg bg-red-50">
+      <div className="bg-red-200 p-3 rounded-full">
+        <FiClock className="text-red-700 text-2xl" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm text-gray-500">Pending Bookings</p>
+        <p className="font-semibold text-lg">{bookings.filter(b => b.status === "PENDING").length}</p>
+      </div>
+    </div>
   </div>
 </div>
 
 
-
-
-      
-     
-    </div>
-
-
-
-
-
-
-
-
-
-    {/* 💡 Smart Insights */}
-    <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-      <h3 className="text-xl font-semibold text-gray-800 mb-2">💡 Quick Insights</h3>
-      <p className="text-gray-700 leading-relaxed">
-        {bookings.length > 0
-          ? `Platform looks ${
-              bookings.length > 50 ? "very active 🔥" : "steady ⚡"
-            } this month with ${bookings.length} total bookings so far.`
-          : "No bookings data yet — waiting for first customer activity!"}
-      </p>
-    </div>
-
-    {/* 📈 Analytics Section */}
-    <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
-        <span className="mr-2">📊</span> FixItNow – Analytics Overview
-      </h2>
-      <AdminAnalyticsTab />
+      </div>
     </div>
   </div>
 )}
 
-       
+  
 
+       
+{activeTab === "analytics" && (
+          <AdminAnalyticsTab />
+        )}
 
         {activeTab === "users" && (
           <UsersCardFull users={users} loading={loadingUsers} setUsers={setUsers} />
