@@ -13,6 +13,7 @@ import { CheckCircleIcon, TrashIcon } from "@heroicons/react/24/solid";
 import {
   getAllUsers, deleteUser, updateUser, getAllServices,
   updateService, deleteService, getAllBookings,getAllDocuments, approveDocument, deleteDocument,
+  
 } from "../../services/api";
 
 import ChatNotifications from "../../components/ChatNotifications";
@@ -24,6 +25,7 @@ import UsersCardFull from "./components/Admin/UsersCardFull";
 import ServicesCardFull from "./components/Admin/ServicesCardFull";
 import AdminChatSection from "./components/admin/AdminChatSection";
 import VerifyDocumentsTab from "./components/Admin/VerifyDocumentsTab";
+import AdminAnalyticsTab from "./components/Admin/AdminAnalyticsTab";
 const rustBrown = "#6e290cff";
 
 export default function AdminDashboard() {
@@ -120,6 +122,7 @@ useEffect(() => {
   };
 
   const sidebarItems = [
+   
     { name: "Home", icon: <FiHome className="text-white" />, key: "home" },
     { name: "Users", icon: <BiUserCircle className="text-white" />, key: "users" },
     { name: "Services", icon: <MdAdminPanelSettings className="text-white" />, key: "services" },
@@ -170,21 +173,93 @@ useEffect(() => {
       <div className="flex-1 flex flex-col bg-white">
         {/* Main Content Area */}
         <main className="flex-1 p-6 overflow-y-auto">
-        {activeTab === "home" && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <MetricCard title="Total Users" value={users.length} icon={<FiUsers style={{ color: rustBrown }} />} />
-              <MetricCard title="Total Bookings" value={bookings.length} icon={<BiClipboard style={{ color: rustBrown }} />} />
-              <MetricCard title="Verified Providers" value={users.filter(u => (u.role || "").toLowerCase() === "provider").length} icon={<FaUserCheck style={{ color: rustBrown }} />} />
-              <MetricCard title="Pending Approvals" value={3} icon={<MdAdminPanelSettings style={{ color: rustBrown }} />} />
-            </div>
+       {activeTab === "home" && (
+  <div className="space-y-10">
+    
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UsersCardHome users={users} loading={loadingUsers} />
-              <BookingsCard bookings={bookings.slice(0, 5)} loading={loadingBookings} />
-            </div>
-          </>
-        )}
+    {/* ⚡ Key Metrics Summary */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <MetricCard
+        title="Total Users"
+        value={users.length}
+        icon={<FiUsers style={{ color: rustBrown }} />}
+      />
+      <MetricCard
+        title="Total Bookings"
+        value={bookings.length}
+        icon={<BiClipboard style={{ color: rustBrown }} />}
+      />
+      <MetricCard
+        title="Verified Providers"
+        value={users.filter(u => (u.role || "").toLowerCase() === "provider").length}
+        icon={<FaUserCheck style={{ color: rustBrown }} />}
+      />
+      <MetricCard
+        title="Pending Approvals"
+        value={0}
+        icon={<MdAdminPanelSettings style={{ color: rustBrown }} />}
+      />
+    </div>
+
+     
+  {/* 🧾 Recent Bookings & 📊 Booking Chart Side by Side */}
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+  {/* Left: Recent Bookings */}
+  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex flex-col h-full">
+    
+    <div className="flex-1">
+      <BookingsCard bookings={bookings.slice(0, 5)} loading={loadingBookings} />
+    </div>
+  </div>
+
+  {/* Right: Top Booking Locations */}
+<div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex flex-col">
+
+  {/* Make sure parent has height so ResponsiveContainer works */}
+  <div className="flex-1 min-h-[400px] w-full">
+    <AdminAnalyticsTab showOnly="locations" />
+  </div>
+</div>
+
+
+
+
+      
+     
+    </div>
+
+
+
+
+
+
+
+
+
+    {/* 💡 Smart Insights */}
+    <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
+      <h3 className="text-xl font-semibold text-gray-800 mb-2">💡 Quick Insights</h3>
+      <p className="text-gray-700 leading-relaxed">
+        {bookings.length > 0
+          ? `Platform looks ${
+              bookings.length > 50 ? "very active 🔥" : "steady ⚡"
+            } this month with ${bookings.length} total bookings so far.`
+          : "No bookings data yet — waiting for first customer activity!"}
+      </p>
+    </div>
+
+    {/* 📈 Analytics Section */}
+    <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+        <span className="mr-2">📊</span> FixItNow – Analytics Overview
+      </h2>
+      <AdminAnalyticsTab />
+    </div>
+  </div>
+)}
+
+       
+
 
         {activeTab === "users" && (
           <UsersCardFull users={users} loading={loadingUsers} setUsers={setUsers} />
