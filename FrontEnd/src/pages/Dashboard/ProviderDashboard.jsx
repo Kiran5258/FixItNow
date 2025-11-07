@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser } from "react-icons/fi";
+import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser,FiMessageCircle,FiX,FiMessageSquare ,FiClipboard,FiAlertTriangle,FiSend} from "react-icons/fi";
 import { BiClipboard } from "react-icons/bi";
 import { GiHammerNails } from "react-icons/gi";
-import { AiOutlineCheckCircle, AiOutlineRadiusSetting } from "react-icons/ai";
-import { FaRegLightbulb } from "react-icons/fa";
+import { AiOutlineCheckCircle, AiOutlineRadiusSetting ,} from "react-icons/ai";
+import { FaRegLightbulb, } from "react-icons/fa";
+import ChatComponent from "../../components/ChatComponent";
+import ChatNotifications from "../../components/ChatNotifications";
+// Removed unused import: useAuth
+
+
+
 
 import {
   getMyProfile,
@@ -17,7 +23,17 @@ import {
   updateBookingStatus,
   getProviderAverageRating,
   getReviewsByProvider,
-  deleteReview
+  deleteReview,
+  markBookingCompleteByProvider,
+  getAllUsers,
+  getAllServices,
+  getReportsByUser,
+  getProviders,
+  getCustomers,
+  createReport,
+  
+  
+  
   
 } from "../../services/api";
 import { Md18UpRating, MdReviews } from "react-icons/md";
@@ -34,6 +50,16 @@ export default function ProviderDashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [error, setError] = useState(false);
   const [reviews, setReviews] = useState([]);
+  // Removed unused state: showChatModal, setShowChatModal
+  const [showAdminChat, setShowAdminChat] = useState(false); // for floating chat
+
+
+const [customers, setCustomers] = useState([]);
+const [selectedCustomer, setSelectedCustomer] = useState(null);
+const [token] = useState(localStorage.getItem("token")); // Removed setToken - not used
+
+
+
 
   
 
@@ -49,6 +75,36 @@ export default function ProviderDashboard() {
     const [respectScore, setRespectScore] = useState(0);
   const [respectLevel, setRespectLevel] = useState("Newbie");
   const [averageRating, setAverageRating] = useState(0);
+
+ useEffect(() => {
+  const handleOpenAdminChat = () => {
+    setShowAdminChat(true);
+  };
+
+  window.addEventListener("openAdminChat", handleOpenAdminChat);
+  return () => window.removeEventListener("openAdminChat", handleOpenAdminChat);
+}, []);
+
+
+
+
+  useEffect(() => {
+  const savedTab = localStorage.getItem("activeTab");
+
+  // If we stored tab as a number like "2" or a key like "users"
+  if (savedTab) {
+    // If numeric, map to your sidebar order
+    if (!isNaN(savedTab)) {
+      const tabs = ["home", "myservices", "bookings","profiles","reviews", "chat"];
+      const index = parseInt(savedTab, 10) - 1;
+      if (tabs[index]) setActiveTab(tabs[index]);
+    } else {
+      // If a string key (like "chat" or "users")
+      setActiveTab(savedTab);
+    }
+    localStorage.removeItem("activeTab"); // clear it after use
+  }
+}, []);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -103,6 +159,21 @@ export default function ProviderDashboard() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+  const fetchCustomers = async () => {
+    try {
+      const response = await getAllUsers(); // admin endpoint that returns all users
+      // Filter only customers
+      const customerList = response.data.filter(user => user.role === "CUSTOMER");
+      setCustomers(customerList);
+    } catch (error) {
+      console.error("Failed to fetch customers:", error);
+    }
+  };
+  fetchCustomers();
+}, []);
+
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
@@ -122,7 +193,7 @@ export default function ProviderDashboard() {
 
 
    const handleCancelProfile = () => {
-    setEditProfileData({ ...customer });
+    setEditProfileData({ ...provider }); // Fixed: use 'provider' instead of 'customer'
     setIsEditingProfile(false);
   };
 
@@ -133,6 +204,7 @@ export default function ProviderDashboard() {
     { name: "Bookings", icon: <BiClipboard className="text-white" />, key: "bookings" },
     { name: "Profile", icon: <FiUser className="text-white" />, key: "profile" }, 
     { name: "Reviews", icon: <MdReviews className="text-white" />, key: "reviews" }, 
+    { name: "Reports", icon: <FiClipboard />, key: "reports" },
 
   ];
 
@@ -158,6 +230,15 @@ export default function ProviderDashboard() {
               {item.icon} <span>{item.name}</span>
             </button>
           ))}
+            <button
+    onClick={() => setActiveTab("chat")}
+    className={`flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 text-white transition ${
+      activeTab === "chat" ? "bg-[#6e290c]" : ""
+    }`}
+  >
+    <FiMessageSquare /> Chat
+  </button>
+
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 p-3 rounded-lg mt-auto hover:bg-white/20 text-white border border-white/20"
@@ -167,8 +248,15 @@ export default function ProviderDashboard() {
         </nav>
       </aside>
 
+      {/* Notification Icon - Top Right Corner Fixed */}
+      <div className="fixed top-4 right-6 z-50">
+        <ChatNotifications />
+      </div>
+
       {/* Main Content */}
-      <main className="flex-1 p-6 bg-white">
+      <div className="flex-1 flex flex-col bg-white">
+        {/* Main Content Area */}
+        <main className="flex-1 p-6 overflow-y-auto">
         {activeTab === "home" && (
           <div className="space-y-6">
             <Greeting provider={provider} />
@@ -194,7 +282,8 @@ export default function ProviderDashboard() {
                   <div className="bg-gray-200 h-4 rounded-full">
                     <div
                       className="h-4 rounded-full bg-indigo-600 transition-all duration-500"
-                      style={{ width: `${respectScore}%` }}
+                     style={{ width: `${respectScore}%` }}
+
                     ></div>
                   </div>
                   <p className="text-gray-800 mt-1 font-semibold">{respectScore} / 100</p>
@@ -254,12 +343,101 @@ export default function ProviderDashboard() {
   <ReviewsTab reviews={reviews}
    />
 )}
+{activeTab === "chat" && (
+  <div className="flex flex-col md:flex-row h-[90vh] bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+    {/* Left: Customer List */}
+    <div className="w-full md:w-1/3 bg-[#f7f3f1] border-r border-gray-300 p-4">
+      <h3 className="text-lg font-semibold text-[#6e290c] mb-4">Active Chats</h3>
+      <div className="space-y-2 overflow-y-auto h-[65vh]">
+        {customers.length > 0 ? (
+          customers.map((cust) => (
+            <button
+              key={cust.id}
+              onClick={() => setSelectedCustomer(cust)}
+              className={`w-full text-left px-4 py-2 rounded-lg transition-all ${
+                selectedCustomer?.id === cust.id
+                  ? "bg-[#6e290c] text-white font-semibold"
+                  : "hover:bg-[#ecdcd4] text-gray-800"
+              }`}
+            >
+              {cust.name}
+            </button>
+          ))
+        ) : (
+          <p className="text-gray-500 text-sm text-center mt-8">No active customers</p>
+        )}
+      </div>
+    </div>
 
+    {/* Right: Chat Window */}
+    <div className="flex-1 flex flex-col justify-center items-center bg-gray-50 p-4">
+      {selectedCustomer ? (
+        
+        <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-xl shadow-sm p-4 h-[100vh] flex flex-col ">
+          
+          <button
+              onClick={() => setSelectedCustomer(null)}
+              className="text-gray-400 hover:text-red-500 transition text-right mt-2 "
+            >
+              ✕
+            </button>
+          
+
+          <ChatComponent
+            token={token}
+            receiverId={selectedCustomer.id}
+            width="100%"
+            height="100%"
+            theme="provider"
+          />
+        </div>
+      ) : (
+        <div className="text-gray-500 text-center">
+          <FiMessageSquare className="mx-auto mb-3 text-4xl text-gray-400" />
+          <p>Select a customer to start chatting</p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+{activeTab === "reports" && provider && <ReportsTab user={provider} />}
 
       </main>
-    </div>
+      {/* Floating Admin Chat Button and Modal – stays visible always */}
+{showAdminChat && (
+  <div
+    className="fixed bottom-20 right-6 sm:right-10 bg-white shadow-2xl rounded-2xl w-[29rem] max-w-[90vw] h-[36rem] border border-gray-200 p-4 flex flex-col z-50 transition-all duration-300"
+    style={{ transform: "translateY(0)" }}
+  >
+    <button
+        onClick={() => setShowAdminChat(false)}
+        className="text-gray-500 hover:text-red-500 transition-colors flex justify-end"
+      >
+        <FiX size={20} />
+      </button>
+    <div className="flex justify-center items-center w-full max-w-[90vw]">
+    <ChatComponent token={token} receiverId={13} theme={"admin"} />
+  </div>
+    
+</div>
+)}
+
+{/* Floating Chat Button */}
+{/* Floating Admin Chat Button */}
+<button
+  onClick={() => setShowAdminChat(!showAdminChat)}
+  className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg z-50 transition-transform hover:scale-105"
+>
+  <FiMessageCircle size={24} />
+</button>
+
+
+      </div>
+      </div>
+   
   );
 }
+
 
 // Greeting Component
 function Greeting({ provider }) {
@@ -267,7 +445,7 @@ function Greeting({ provider }) {
   const greeting =
     hours < 12 ? "Good Morning" :
     hours < 16 ? "Good Afternoon" :
-    hours < 18 ? "Good Evening":
+    hours < 20 ? "Good Evening":
     "Good Night";
 
   return (
@@ -314,11 +492,27 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
     setModalOpen(true);
   };
 
+  const handleDeleteService = async (serviceId) => {
+  if (!window.confirm("Are you sure you want to delete this service?")) return;
+
+  try {
+    await deleteService(serviceId); // Call backend API
+    setServices(prev => prev.filter(s => s.id !== serviceId)); // Remove from state
+    alert("Service deleted successfully!");
+  } catch (err) {
+    console.error("Failed to delete service:", err);
+    alert("Failed to delete service. Please try again.");
+  }
+};
   const handleSave = async () => {
     if (!newService.category || !newService.subcategory || !newService.description || !newService.price || !newService.availability || !newService.location) {
       alert("Please fill all fields including availability and location");
       return;
     }
+
+    // Delete Service Handler
+
+
 
     try {
       if (editingService) {
@@ -358,11 +552,13 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
 
             <div className="flex gap-3 mt-2">
               <button onClick={() => openEditModal(service)} className="bg-gray-600 text-white px-3 py-1 rounded">Edit</button>
-              <button onClick={async () => {
-                if (!window.confirm("Delete service?")) return;
-                await deleteService(service.id);
-                setServices(services.filter(s => s.id !== service.id));
-              }} className="bg-[#B7410E] text-white px-3 py-1 rounded">Delete</button>
+              <button
+  onClick={() => handleDeleteService(service.id)}
+  className="bg-[#B7410E] text-white px-3 py-1 rounded"
+>
+  Delete
+</button>
+
             </div>
           </div>
         ))}
@@ -434,16 +630,28 @@ function ServicesCardFull({ services, setServices, modalOpen, setModalOpen, edit
                 placeholder="Location"
                 className="flex-1 px-4 py-2 border rounded-md"
               />
-              <button onClick={() => {
-                if (navigator.geolocation) {
-                  navigator.geolocation.getCurrentPosition(async pos => {
-                    const { latitude, longitude } = pos.coords;
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
-                    const data = await res.json();
-                    setNewService(prev => ({ ...prev, location: data.display_name || `Lat: ${latitude}, Lon: ${longitude}` }));
-                  });
-                } else alert("Geolocation not supported");
-              }} className="px-2 py-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105">Use Current</button>
+              <button
+  onClick={() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+        );
+        const data = await res.json();
+        setNewService((prev) => ({
+          ...prev,
+          location: data.display_name || `Lat: ${latitude}, Lon: ${longitude}`,
+        }));
+      });
+    } else {
+      alert("Geolocation not supported");
+    }
+  }}
+  className="px-2 py-2 rounded-md text-white font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg transition-transform transform hover:scale-105"
+>
+  Use Current
+</button>
             </div>
 
             <button onClick={handleSave} className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">{editingService ? "Update Service" : "Add Service"}</button>
@@ -489,7 +697,8 @@ function ServicePerformance({ services, bookings }) {
               <div className="bg-gray-200 h-2 rounded-full mt-1">
                 <div
                   className="h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%`, backgroundColor: progressColor }}
+                 style={{ width: `${progress}%`, backgroundColor: progressColor }}
+
                 />
               </div>
             </div>
@@ -522,7 +731,8 @@ function RecentActivity({ bookings }) {
   );
 }
 
-// Bookings Card
+
+
 function BookingsCard({ bookings, setBookings }) {
 
   const getStatusBadge = (status) => {
@@ -545,6 +755,12 @@ function BookingsCard({ bookings, setBookings }) {
             <FiXCircle /> {status}
           </span>
         );
+      case "confirmed":
+        return (
+          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-semibold">
+            {status}
+          </span>
+        );
       default:
         return <span className="px-2 py-1 bg-gray-100 rounded-full">{status}</span>;
     }
@@ -552,10 +768,7 @@ function BookingsCard({ bookings, setBookings }) {
 
   const handleStatusUpdate = async (bookingId, newStatus) => {
     try {
-      // Call backend endpoint
       await updateBookingStatus(bookingId, newStatus);
-
-      // Update UI state immediately
       setBookings(bookings.map(b =>
         b.id === bookingId ? { ...b, status: newStatus } : b
       ));
@@ -564,6 +777,20 @@ function BookingsCard({ bookings, setBookings }) {
       alert("Failed to update booking status.");
     }
   };
+
+  const handleMarkComplete = async (bookingId) => {
+  try {
+    await markBookingCompleteByProvider(bookingId); // backend can just set providerMarkedComplete = true
+    setBookings(bookings.map(b =>
+      b.id === bookingId ? { ...b, providerMarkedComplete: true } : b
+    ));
+    alert("Marked as completed. Waiting for customer verification.");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to mark booking as complete.");
+  }
+};
+
 
   if (!bookings || bookings.length === 0) {
     return <p className="text-black/70 mt-4">No bookings available.</p>;
@@ -576,58 +803,104 @@ function BookingsCard({ bookings, setBookings }) {
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {bookings.map((b) => (
-          <div
-            key={b.id}
-            className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
-            style={{
-              borderColor:
-                b.status?.toLowerCase() === "pending"
-                  ? "#facc15"
-                  : b.status?.toLowerCase() === "completed"
-                  ? "#16a34a"
-                  : "#dc2626",
-            }}
-          >
-            <div className="flex col items-center gap-3">
-              <FiUser/>
-              <h3 className="font-semibold text-lg">
-                
-                {b.customer?.name || b.customer?.username || "Unknown"}
-              </h3>
-              {getStatusBadge(b.status)}
-            </div>
+        {bookings.map((b) => {
+          const now = new Date();
 
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">{b.service?.category}</span> - {b.service?.subcategory}
-            </p>
-            <p className="text-sm text-gray-600">{b.service?.description}</p>
-            <p className="text-sm text-gray-600">
-              <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
-            </p>
+  // Extract start time from timeSlot
+  const startTime = b.timeSlot.split(" - ")[0]; // "9:00 AM"
 
-            {b.status?.toLowerCase() === "pending" && (
-              <div className="flex gap-2 mt-2">
-                <button
-                  className="flex-1 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
-                  onClick={() => handleStatusUpdate(b.id, "COMPLETED")}
-                >
-                  Accept
-                </button>
-                <button
-                  className="flex-1 bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
-                  onClick={() => handleStatusUpdate(b.id, "CANCELLED")}
-                >
-                  Decline
-                </button>
+  // Combine date + start time to get booking Date object
+ const bookingDateTime = new Date(`${b.bookingDate} ${startTime}`);
+
+
+  // Check if "Mark as Complete" button should show
+  const showMarkCompleteBtn =
+    b.status?.toLowerCase() === "confirmed" &&
+    !b.providerMarkedComplete &&
+    bookingDateTime <= now;
+
+console.log("Booking ID:", b.id, "BookingDateTime:", bookingDateTime, "Now:", now, "ShowBtn:", showMarkCompleteBtn,b.bookingDate,b.timeSlot);
+
+
+
+          return (
+            <div
+              key={b.id}
+              className="bg-white border-l-4 rounded-xl p-5 shadow hover:shadow-lg transition flex flex-col gap-3"
+              style={{
+                borderColor:
+                  b.status?.toLowerCase() === "pending"
+                    ? "#facc15"
+                    : b.status?.toLowerCase() === "completed"
+                    ? "#16a34a"
+                    : b.status?.toLowerCase() === "confirmed"
+                    ? "#3b82f6"
+                    : "#dc2626",
+              }}
+            >
+              <div className="flex col items-center gap-3">
+                <FiUser/>
+                <h3 className="font-semibold text-lg">
+                  {b.customer?.name || b.customer?.username || "Unknown"}
+                </h3>
+                {getStatusBadge(b.status)}
               </div>
-            )}
-          </div>
-        ))}
+
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">{b.service?.category}</span> - {b.service?.subcategory}
+              </p>
+              <p className="text-sm text-gray-600">{b.service?.description}</p>
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold">Date:</span> {b.bookingDate} | <span className="font-semibold">Time:</span> {b.timeSlot}
+              </p>
+
+              {/* Pending Booking Buttons */}
+              {b.status?.toLowerCase() === "pending" && (
+                <div className="flex gap-2 mt-2">
+                  <button
+                    className="flex-1 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
+                    onClick={() => handleStatusUpdate(b.id, "CONFIRMED")}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    className="flex-1 bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
+                    onClick={() => handleStatusUpdate(b.id, "CANCELLED")}
+                  >
+                    Decline
+                  </button>
+                </div>
+              )}
+
+              {/* Confirmed Booking => Mark as Completed */}
+              {showMarkCompleteBtn && (
+                <button
+                  className="px-4 py-2 bg-[#6e290c] text-white rounded-lg hover:bg-[#a44a1d] transition"
+                  onClick={() => handleMarkComplete(b.id)}
+                >
+                  Mark as Completed
+                </button>
+              )}
+
+              {/* Waiting for customer verification */}
+              {/* Show status */}
+{/* Waiting for customer verification */}
+{b.status?.toLowerCase() === "confirmed" && b.providerMarkedComplete && (
+  <span className="flex-1 text-center bg-yellow-100 text-yellow-800 px-3 py-1 rounded-lg mt-2">
+    Waiting for customer verification
+  </span>
+)}
+
+
+
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
 
 function ProfileTab({
   provider,
@@ -693,22 +966,25 @@ function ProfileTab({
               className="border px-3 py-2 rounded"
               placeholder="Location"
             />
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={handleSaveProfile}
-                className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                disabled={loading}
-              >
-                {loading ? "Saving..." : "Save"}
-              </button>
-              <button
-                onClick={handleCancelProfile}
-                className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-            </div>
+           <div className="flex gap-2 mt-3">
+  <button
+    onClick={handleSaveProfile}
+    className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ${
+      loading ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    disabled={loading}
+  >
+    {loading ? "Saving..." : "Save"}
+  </button>
+  <button
+    onClick={handleCancelProfile}
+    className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+    disabled={loading}
+  >
+    Cancel
+  </button>
+</div>
+
           </>
         ) : (
           <>
@@ -730,32 +1006,7 @@ function ProfileTab({
 
 function ReviewsTab({ reviews }) {
   const [allReviews, setAllReviews] = useState(reviews || []);
-  const [replyText, setReplyText] = useState("");
-  const [selectedReview, setSelectedReview] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  // Function to post a reply
-  const handleReply = async () => {
-    if (!replyText || !selectedReview) return;
-    setLoading(true);
-    try {
-      // Call backend API
-      await addReviewReply(selectedReview.id, { reply: replyText });
-
-      // Update local state to show reply immediately
-      setAllReviews(allReviews.map(r =>
-        r.id === selectedReview.id ? { ...r, reply: replyText } : r
-      ));
-
-      setReplyText("");
-      setSelectedReview(null);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to reply to review.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Removed unused variables: replyText, setReplyText, selectedReview, setSelectedReview, loading, setLoading, handleReply
 
   // Function to delete review
   const handleDeleteReview = async (reviewId) => {
@@ -785,9 +1036,18 @@ function ReviewsTab({ reviews }) {
             <p className="text-gray-700">{r.comment}</p>
 
             <div className="text-sm text-gray-500 flex gap-2 flex-wrap">
-              {r.service?.category && <span className="px-2 py-1 bg-gray-200 rounded">{`Category: ${r.service.category}`}</span>}
-              {r.service?.subcategory && <span className="px-2 py-1 bg-gray-200 rounded">{`Subcategory: ${r.service.subcategory}`}</span>}
-              
+              {r.service?.category && (
+  <span className="px-2 py-1 bg-gray-200 rounded">
+    {`Category: ${r.service.category}`}
+  </span>
+)}
+
+{r.service?.subcategory && (
+  <span className="px-2 py-1 bg-gray-200 rounded">
+    {`Subcategory: ${r.service.subcategory}`}
+  </span>
+)}
+
             </div>
 
             
@@ -803,6 +1063,320 @@ function ReviewsTab({ reviews }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}function ReportsTab({ user }) {
+  const [reports, setReports] = useState([]);
+  const [reason, setReason] = useState("");
+  const [targetType, setTargetType] = useState("CUSTOMER"); // ✅ default to CUSTOMER
+  const [targetId, setTargetId] = useState("");
+
+  const [customers, setCustomers] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState([]);
+
+  useEffect(() => {
+    if (user?.id) fetchReports(user.id);
+    fetchAllOptions();
+  }, [user]);
+
+  const fetchReports = async (id) => {
+    try {
+      const res = await getReportsByUser(id);
+      setReports(res.data || []);
+    } catch (err) {
+      console.error("Error fetching reports:", err);
+    }
+  };
+
+  const fetchAllOptions = async () => {
+    try {
+      let bookingRes = { data: [] };
+      let custRes = { data: [] };
+
+      const serviceRes = await getAllServices();
+
+      // ✅ Fetch all customers
+      custRes = await getCustomers();
+
+      if (user.role === "CUSTOMER") {
+        bookingRes = await getBookingsByCustomer(user.id);
+      } else if (user.role === "PROVIDER") {
+        bookingRes = await getBookingsByProvider(user.id);
+      } else if (user.role === "ADMIN") {
+        bookingRes = await getAllBookings();
+      }
+
+      setBookings(bookingRes.data || []);
+      setCustomers(custRes.data || []);
+      setServices(serviceRes.data || []);
+      console.log("📋 All Customers:", custRes.data);
+    } catch (err) {
+      console.error("Error fetching customers/bookings:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user?.id) return alert("User not loaded yet.");
+    if (!targetId) return alert("Please select a valid target.");
+
+    try {
+      await createReport(user.id, targetType, targetId, reason);
+      alert("✅ Report submitted successfully!");
+      setReason("");
+      setTargetId("");
+      fetchReports(user.id);
+    } catch (err) {
+      console.error("Error creating report:", err);
+      alert("❌ Failed to submit report.");
+    }
+  };
+
+  // ✅ Dropdown options
+  const getTargetOptions = () => {
+    if (loading) return [<option key="loading">Loading...</option>];
+
+    switch (targetType) {
+      case "CUSTOMER":
+        return customers.length > 0 ? (
+          customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              👤 {c.name || c.fullName || "Unnamed Customer"} —{" "}
+              {c.email || "No email"}
+            </option>
+          ))
+        ) : (
+          <option key="nocust">No customers found</option>
+        );
+
+      case "BOOKING":
+        return bookings.length > 0 ? (
+          bookings.map((b) => {
+            const serviceCategory = b.service?.category || "Unnamed Category";
+            const serviceSubcategory =
+              b.service?.subcategory || "Unnamed Subcategory";
+            const customerName =
+              b.customer?.name ||
+              b.customer?.fullName ||
+              b.customer?.email ||
+              "Unknown Customer";
+            const date = b.bookingDate
+              ? new Date(b.bookingDate).toLocaleDateString()
+              : "Unknown Date";
+           const status =
+  b.status === "COMPLETED"
+    ? "✅"
+    : b.status === "CANCELLED"
+    ? "❌"
+    : b.status === "CONFIRMED"
+    ? "🟢"
+    : "⏳";
+
+
+            return (
+              <option key={b.id} value={b.id} className="truncate text-xs text-gray-700"  >
+                👤 {customerName} | 📅 {date} - {serviceCategory} (
+                {serviceSubcategory}) {status}
+                
+              </option>
+            );
+          })
+        ) : (
+          <option key="nobook">No bookings found</option>
+        );
+
+      default:
+        return [];
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-red-100 via-pink-50 to-gray-100 p-8">
+      {/* Centered Form Card */}
+      <div className="flex justify-center mb-10">
+        <div className="w-full max-w-3xl h-[470px] backdrop-blur-xl bg-white/60 shadow-2xl rounded-3xl p-8 border border-white/30">
+          {/* Report Header */}
+          <div className="flex flex-col md:flex-row justify-between items-center border-b border-gray-200 pb-5 mb-6">
+            <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-3">
+              <span className="p-2 bg-red-100 text-red-600 rounded-xl">
+                <FiAlertTriangle size={24} />
+              </span>
+              Report an Issue
+            </h2>
+            <p className="text-gray-700 mt-3 md:mt-0 text-sm bg-white/70 px-4 py-2 rounded-full shadow-sm">
+              👤 Logged in as: <strong>{user?.name || "Loading..."}</strong>
+            </p>
+          </div>
+
+          {/* Report Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="text-gray-700 font-medium mb-1 block">
+                  Target Type
+                </label>
+                <select
+                  className="w-full bg-white/70 border border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none shadow-sm"
+                  value={targetType}
+                  onChange={(e) => {
+                    setTargetType(e.target.value);
+                    setTargetId("");
+                  }}
+                >
+                  <option value="CUSTOMER">Customer</option>
+                  <option value="BOOKING">Booking</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-gray-700 font-medium mb-1 block">
+                  Select Target
+                </label>
+                <select
+    className="w-full bg-white/80 border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 
+    focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none shadow-md 
+    hover:shadow-lg transition-all duration-300 text-sm"
+    value={targetId}
+    
+    onChange={(e) => setTargetId(e.target.value)}
+    required
+  >
+                  <option value="">-- Select --</option>
+                  {getTargetOptions()}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-gray-700 font-medium mb-1 block">
+                Reason for Report
+              </label>
+              <textarea
+                placeholder="Describe the issue in detail..."
+                className="w-full bg-white/70 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none resize-none shadow-sm"
+                rows="3"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-red-500 via-pink-500 to-red-600 hover:opacity-90 transition-all text-white py-3 rounded-xl font-semibold flex justify-center items-center gap-2 shadow-lg transform hover:scale-[1.02]"
+            >
+              <FiSend size={20} /> Submit Report
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Previous Reports */}
+      <div className="w-full max-w-6xl mx-auto">
+        <h3 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
+          Your Previous Reports
+        </h3>
+
+        {reports.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reports.map((r) => {
+              const booking = bookings.find((b) => b.id === r.targetId);
+              const serviceCategory =
+                booking?.service?.category || "Unnamed Category";
+              const serviceSubcategory =
+                booking?.service?.subcategory || "Unnamed Subcategory";
+              const customerName =
+                booking?.customer?.name ||
+                booking?.customer?.fullName ||
+                booking?.customer?.email ||
+                "Unknown Customer";
+              const date = booking?.bookingDate
+                ? new Date(booking.bookingDate).toLocaleDateString()
+                : "Unknown Date";
+              const status = booking?.status || "Pending";
+
+              return (
+                <div
+                  key={r.id}
+                  className="bg-white/90 border border-gray-200 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 p-5"
+                >
+                  <div className="flex flex-col justify-between h-full">
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2 text-lg">
+                        {r.targetType === "BOOKING"
+                          ? "📘 Booking Report"
+                          : "👤 Customer Report"}
+                      </h4>
+                      {r.targetType === "CUSTOMER" && (
+                        <div className="text-sm text-gray-700 leading-tight mb-2">
+                          👤 {customers.find(c => c.id === r.targetId)?.name || "Unknown Customer"}
+                          </div>)}
+
+                      {r.targetType === "BOOKING" && (
+                        <div className="text-sm text-gray-700 leading-tight mb-2">
+                          📅 {date} — {customerName}
+                          <br />
+                          {serviceCategory} ({serviceSubcategory})
+                          <br />
+                          <span
+                            className={`text-xs font-semibold ${
+                              status === "COMPLETED"
+                                ? "text-green-600"
+                                : status === "CANCELLED"
+                                ? "text-red-600"
+                                : "text-yellow-600"
+                            }`}
+                          >
+                            {status}
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="text-sm text-gray-700 mb-1">
+                        <strong>Reason:</strong> {r.reason}
+                      </p>
+
+                      <strong className="text-sm text-gray-500">
+                        Reported on:{" "}
+                        {r.createdAt
+                          ? new Date(r.createdAt).toLocaleDateString()
+                          : "Unknown Date"}
+                      </strong>
+                    </div>
+
+                    <div className="mt-3 flex flex-col items-end">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          r.status === "Resolved"
+                            ? "bg-green-100 text-green-700"
+                            : r.status === "Rejected"
+                            ? "bg-red-100 text-red-600"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {r.status || "Pending"}
+                      </span>
+                      {r.adminResponse && (
+                        <p className="text-xs text-gray-600 mt-2 italic text-right">
+                          💬 {r.adminResponse}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-gray-600 italic text-center mt-4">
+            No reports yet. Start by submitting your first one.
+          </p>
+        )}
       </div>
     </div>
   );

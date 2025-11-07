@@ -45,4 +45,7 @@ public class User {
     @JsonManagedReference
     private List<ServiceProvider> services;
 
+    private boolean isVerified = false;
+
+
 }

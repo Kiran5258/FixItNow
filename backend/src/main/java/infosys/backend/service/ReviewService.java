@@ -159,6 +159,10 @@ public class ReviewService {
                 .getId();
     }
 
+
+    public Optional<Review> getReviewByBookingId(Long bookingId) {
+        return reviewRepository.findByBookingId(bookingId);
+    }
     
 
 }

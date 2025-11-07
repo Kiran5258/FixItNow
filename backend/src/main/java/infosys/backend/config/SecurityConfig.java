@@ -24,30 +24,38 @@ public class SecurityConfig {
     }
 
     @Bean
-public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http
-        .cors(cors -> {}) // enable CORS
-        .csrf(csrf -> csrf.disable()) // disable CSRF for API
-        .authorizeHttpRequests(auth -> auth
-            // Public endpoints
-            .requestMatchers("/api/auth/**").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/services").permitAll()  // public listing
-            // Protected endpoints
-            .requestMatchers("/api/services/**").authenticated()           // all service modifications require login
-            .requestMatchers("/api/users/**").authenticated()  
-            // Only CUSTOMER can create bookings
-            .requestMatchers("/bookings/**").authenticated()
-            // Only authenticated users can see reviews
-            .requestMatchers("/reviews/provider/**").authenticated()  // any logged-in user can view reviews
-            .requestMatchers("/reviews/add").authenticated()          // all user management require login
-            // Any other endpoints require authentication
-            .anyRequest().authenticated()
-            
-        );
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .cors(cors -> {}) // Enable CORS
+            .csrf(csrf -> csrf.disable()) // Disable CSRF for APIs
+            .authorizeHttpRequests(auth -> auth
+                // 🔓 Public endpoints
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/services").permitAll()  // public service listing
+                .requestMatchers("/uploads/**").permitAll()  // allow static file access
+                .requestMatchers("/ws/**").permitAll()       // allow WebSocket handshake
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // preflight requests
 
-    http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                // 🔐 Protected endpoints
+                .requestMatchers("/api/services/**").authenticated()
+                .requestMatchers("/api/users/**").authenticated()
+                .requestMatchers("/bookings/**").authenticated()
+                .requestMatchers("/reviews/**").authenticated()
+                .requestMatchers("/api/messages/**").authenticated()
+                .requestMatchers("/api/documents/**").authenticated()
+                .requestMatchers("/api/reports/**").authenticated()
 
-    return http.build();
-}
+                // 🧮 Admin Analytics endpoints (secured)
+                .requestMatchers("/api/admin/analytics/**").authenticated()
+                // 👉 If you want only admin role, you can use:
+                // .requestMatchers("/api/admin/analytics/**").hasRole("ADMIN")
 
+                // All other requests
+                .anyRequest().authenticated()
+            );
+
+        http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
 }

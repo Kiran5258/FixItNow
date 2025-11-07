@@ -1,24 +1,35 @@
-
+// API Base URL Configuration
 export const BASE_URL = "http://localhost:8080";
 
-export const API_PATHS = {
-  AUTH: {
-    REGISTER: "/api/auth/register",
-    LOGIN: "/api/auth/login",
-  },
-  CUSTOMER: {
-    GET_USER_INFO: "/api/users/me", // customer fetching their own info
-    GET_PROVIDERS: "/api/users/providers", // customer fetching all providers
-  },
-  PROVIDER: {
-    GET_USER_INFO: "/api/users/me", // provider fetching their own info
-  },
-  ADMIN: {
-    GET_ALL_USERS: "/api/users/all",
-    GET_USER_BY_ID: (id) => `/api/users/${id}`,
-    GET_USER_BY_EMAIL: (email) => `/api/users/email/${email}`,
-    DELETE_USER: (id) => `/api/users/${id}`,
-    UPDATE_USER: (id) => `/api/users/${id}`,
-  },
+// WebSocket URL
+export const WS_URL = "http://localhost:8080/ws";
+
+// API Endpoints
+export const API_ENDPOINTS = {
+  // Auth
+  LOGIN: "/api/auth/login",
+  REGISTER: "/api/auth/register",
+  
+  // Users
+  USERS: "/api/users",
+  MY_PROFILE: "/api/users/me",
+  
+  // Services
+  SERVICES: "/api/services",
+  
+  // Bookings
+  BOOKINGS: "/api/bookings",
+  
+  // Messages
+  MESSAGES: "/api/messages",
+  
+  // Notifications
+  NOTIFICATIONS: "/api/notifications",
+  NOTIFICATIONS_UNREAD: "/api/notifications/unread",
+  NOTIFICATIONS_COUNT: "/api/notifications/count",
+  
+  // Reviews
+  REVIEWS: "/api/reviews",
 };
 
+export default BASE_URL;

@@ -11,15 +11,18 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import ProviderDetailPage from "./pages/provider/ProviderDetailPage";
 import BookingSummaryPage from "./pages/Customer/BookingSummaryPage";
+import ChatPage from "./components/ChatPage";
 
 function App() {
   return (
     <AuthProvider>
+      
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/register" element={<Registration />} />
           <Route path="/login" element={<Login />} />
+
           {/* Protected Routes */}
           <Route
             path="/provider-dashboard"
@@ -66,9 +69,20 @@ function App() {
             }
           />
 
-          {/* Catch-all route */}
+          {/* Chat Route (dynamic) */}
+          <Route
+            path="/chat/:receiverId"
+            element={
+              <ProtectedRoute>
+                <ChatPage/>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch-all */}
           <Route path="*" element={<Home />} />
         </Routes>
+      
     </AuthProvider>
   );
 }

@@ -23,6 +23,7 @@ public class ReviewController {
     private final ReviewService reviewService;
     private final UserService userService;
     private final ServiceProviderService serviceProviderService;
+    
 
     // ✅ Add a new review
     @PreAuthorize("hasRole('CUSTOMER')")
@@ -114,4 +115,10 @@ public ResponseEntity<ReviewResponseDTO> addReply(
     }
 
 
+    @GetMapping("/booking/{bookingId}")
+    public ResponseEntity<?> getReviewByBookingId(@PathVariable Long bookingId) {
+        return reviewService.getReviewByBookingId(bookingId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
+    }
 }

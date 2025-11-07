@@ -10,12 +10,8 @@ import {
 } from "react-icons/hi";
 import { FaHome, FaWrench } from "react-icons/fa";
 import { register } from "../../services/api";
-import toast from "react-hot-toast";
 
 export default function Registration() {
-  const navigate = useNavigate();
-
-  // User fields
   const [fullname, setFullname] = useState("");
   const [location, setLocation] = useState("");
   const [latitude, setLatitude] = useState(null);
@@ -26,6 +22,7 @@ export default function Registration() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [document, setDocument] = useState(null); // 📁 Added for provider document upload
 
   // Provider fields
   const [category, setCategory] = useState("");
@@ -33,6 +30,8 @@ export default function Registration() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [availability, setAvailability] = useState("");
+
+  const navigate = useNavigate();
 
   // 🌍 Get coordinates from location string
   const getCoordinatesFromLocation = async (loc) => {
@@ -84,7 +83,7 @@ export default function Registration() {
         }
       );
     } else {
-      toast.error("Geolocation not supported by your browser.");
+      alert("Geolocation not supported by your browser.");
     }
   };
 
@@ -94,7 +93,6 @@ export default function Registration() {
     setError("");
     setLoading(true);
 
-    // Basic validations
     if (!fullname || !email || !password || !location) {
       setError("Please fill all required fields");
       setLoading(false);
@@ -127,12 +125,38 @@ export default function Registration() {
       subcategory,
       description,
       price: role === "PROVIDER" ? parseFloat(price) : undefined,
-      availability: role === "PROVIDER" ? availability : undefined,
+      availability,
     };
 
     try {
-      await register(userData);
-      alert("Registration successful!");
+      // 1️⃣ Register the user
+      const response = await register(userData);
+      const { userId, message, role: userRole } = response.data;
+
+      alert(message);
+
+      // 2️⃣ Upload document if provider
+      if (userRole === "PROVIDER" && document) {
+        const formData = new FormData();
+        formData.append("file", document);
+
+        const uploadResponse = await fetch
+        (`http://localhost:8080/api/auth/upload-documents/${userId}`, 
+ 
+
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (uploadResponse.ok) {
+          alert("Document uploaded successfully, pending admin review.");
+        } else {
+          alert("Document upload failed.");
+        }
+      }
+
       navigate("/login");
     } catch (err) {
       console.error("Registration error:", err);
@@ -165,9 +189,7 @@ export default function Registration() {
       </div>
 
       {/* Form Container */}
-      <div className="relative z-10 w-full max-w-md flex flex-col items-center px-6 py-8 
-        rounded-xl backdrop-blur-md shadow-2xl">
-
+      <div className="relative z-10 w-full max-w-md flex flex-col items-center px-6 py-8 rounded-xl backdrop-blur-md shadow-2xl">
         <p className="text-white text-lg mb-6 text-center">
           Create your account below to get started.
         </p>
@@ -267,21 +289,25 @@ export default function Registration() {
                 onChange={(e) => setSubcategory(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option  className="bg-white text-black" value="">Select Subcategory</option>
+                <option className="bg-white text-black" value="">Select Subcategory</option>
                 {category === "Plumbing" && (
                   <>
-                    <option  className="bg-white text-black" value="Pipe Repair">Pipe Repair</option>
-                    <option  className="bg-white text-black" value="Faucet Installation">Faucet Installation</option>
+                    <option className="bg-white text-black" value="Pipe Repair">Pipe Repair</option>
+                    <option className="bg-white text-black" value="Faucet Installation">Faucet Installation</option>
                   </>
                 )}
                 {category === "Electrical" && (
                   <>
-                    <option  className="bg-white text-black" value="Wiring">Wiring</option>
-                    <option  className="bg-white text-black" value="Appliance Repair">Appliance Repair</option>
+                    <option className="bg-white text-black" value="Wiring">Wiring</option>
+                    <option className="bg-white text-black" value="Appliance Repair">Appliance Repair</option>
                   </>
                 )}
-                {category === "Carpentry" && <option  className="bg-white text-black" value="Furniture Repair">Furniture Repair</option>}
-                {category === "Cleaning" && <option  className="bg-white text-black" value="Home Cleaning">Home Cleaning</option>}
+                {category === "Carpentry" && (
+                  <option className="bg-white text-black" value="Furniture Repair">Furniture Repair</option>
+                )}
+                {category === "Cleaning" && (
+                  <option className="bg-white text-black" value="Home Cleaning">Home Cleaning</option>
+                )}
               </select>
 
               <textarea
@@ -307,13 +333,22 @@ export default function Registration() {
                 onChange={(e) => setAvailability(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
+
+              {/* 📁 Document Upload */}
+              <div className="w-full">
+                <label className="text-white text-sm mb-1 block">Upload Verification Document</label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setDocument(e.target.files[0])}
+                  className="w-full text-white bg-white/20 px-3 py-2 rounded-md border border-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </>
           )}
 
-          {/* Error message */}
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
-          {/* Submit button */}
           <button
             type="submit"
             disabled={loading}
@@ -323,9 +358,11 @@ export default function Registration() {
           </button>
         </form>
 
-        {/* Login link */}
         <p className="text-white text-sm mt-6">
-          Already have an account? <Link to="/login" className="underline font-medium">Log In</Link>
+          Already have an account?{" "}
+          <Link to="/login" className="underline font-medium">
+            Log In
+          </Link>
         </p>
       </div>
     </div>

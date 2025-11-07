@@ -4,10 +4,13 @@ import infosys.backend.dto.ServiceRequest;
 import infosys.backend.enums.Role;
 import infosys.backend.model.ServiceProvider;
 import infosys.backend.model.User;
+import infosys.backend.repository.BookingRepository;
+import infosys.backend.repository.ReviewRepository;
 import infosys.backend.repository.ServiceRepository;
 import infosys.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -18,6 +21,8 @@ public class ServiceProviderService {
 
     private final ServiceRepository serviceRepository;
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
+    private final ReviewRepository reviewRepository;
 
     // ✅ Create a new service (PROVIDER only) using email from JWT
     public ServiceProvider createService(ServiceRequest request, String providerEmail) {
@@ -69,10 +74,21 @@ public class ServiceProviderService {
     }
 
     // ✅ Delete service (PROVIDER only)
+    @Transactional
     public void deleteService(Long id) {
+        ServiceProvider service = serviceRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Service not found with ID: " + id));
         if (!serviceRepository.existsById(id)) {
             throw new IllegalArgumentException("Service not found with ID: " + id);
         }
-        serviceRepository.deleteById(id);
+        reviewRepository.deleteByServiceId(id);
+        bookingRepository.deleteByServiceId(id);
+        User provider = service.getProvider();
+    provider.getServices().remove(service);
+
+    // Now delete service explicitly (optional)
+    serviceRepository.delete(service);
+
+    System.out.println("Deleted service with ID: " + id);
     }
 }
