@@ -20,4 +20,6 @@ public class ServiceResponse {
     private BigDecimal price;
     private String availability;
     private String location;
+    private boolean providerVerified;
+
 }

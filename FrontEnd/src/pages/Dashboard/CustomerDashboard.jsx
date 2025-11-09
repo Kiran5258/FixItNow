@@ -17,6 +17,8 @@ import {
   getProviderAverageRating,
   updateUser,
   verifyBookingByCustomer,
+  getUserById,
+  
 } from "../../services/api";
 
 // Theme color used across the dashboard
@@ -187,20 +189,22 @@ export default function CustomerDashboard() {
           setReviewsMap({});
         }
 
-  const sRes = await getAllServices();
-  const servicesData = sRes.data || [];
-        setServices(servicesData);
-        // Immediately set servicesWithDistance with whatever coords are present
-        // so the map can render quickly for items that already have lat/lon.
-        setServicesWithDistance(
-          servicesData.map((s) => ({
-            ...s,
-            latitude: s.latitude ?? s.lat ?? null,
-            longitude: s.longitude ?? s.lon ?? null,
-            distance: null,
-          }))
-        );
+    const sRes = await getAllServices();
+const allServices = Array.isArray(sRes.data) ? sRes.data : [];
 
+
+const verifiedServices = allServices.filter(s => s.providerVerified);
+setServices(verifiedServices);
+
+// Initialize with available coordinates for faster UI rendering
+setServicesWithDistance(
+  verifiedServices.map((s) => ({
+    ...s,
+    latitude: s.latitude ?? s.lat ?? null,
+    longitude: s.longitude ?? s.lon ?? null,
+    distance: null,
+  }))
+);
         // Background: resolve missing coordinates, compute distances and fetch ratings.
         (async () => {
           try {
@@ -212,7 +216,7 @@ export default function CustomerDashboard() {
               if (cgeo) customerCoords = { lat: cgeo.latitude, lon: cgeo.longitude };
             }
 
-            const updated = [...servicesData];
+            const updated = [...verifiedServices];
             // build unique locations to geocode to avoid duplicate requests
             const locMap = new Map();
             updated.forEach((s, idx) => {

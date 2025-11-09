@@ -53,6 +53,7 @@ public class ServiceController {
                 .price(service.getPrice())
                 .availability(service.getAvailability())
                 .location(service.getLocation())
+                .providerVerified(service.getProvider().isVerified())
                 .build();
 
         return ResponseEntity.ok(response);
@@ -73,6 +74,7 @@ public class ServiceController {
                         .price(service.getPrice())
                         .availability(service.getAvailability())
                         .location(service.getLocation())
+                        .providerVerified(service.getProvider().isVerified()) 
                         .build())
                 .collect(Collectors.toList());
 
@@ -95,6 +97,7 @@ public class ServiceController {
                     .price(service.getPrice())
                     .availability(service.getAvailability())
                     .location(service.getLocation())
+                    .providerVerified(service.getProvider().isVerified()) 
                     .build())
             .toList();
 
