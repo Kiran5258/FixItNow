@@ -79,13 +79,14 @@ export default function Registration() {
   };
 
   const formatTime = (t) => {
-    if (!t) return "";
-    const [hour, minute] = t.split(":");
-    const h = parseInt(hour);
-    const suffix = h >= 12 ? "pm" : "am";
-    const formattedHour = ((h + 11) % 12) + 1;
-    return `${formattedHour}:${minute}${suffix}`;
-  };
+  if (!t) return "";
+  const [hour, minute] = t.split(":");
+  const h = parseInt(hour);
+  const suffix = h >= 12 ? "pm" : "am";
+  const formattedHour = ((h + 11) % 12) + 1;
+  return `${formattedHour}.${minute.padStart(2, "0")} ${suffix}`;
+};
+
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -272,11 +273,11 @@ export default function Registration() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white/50 bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">Select Category</option>
-                <option>Plumbing</option>
-                <option>Electrical</option>
-                <option>Carpentry</option>
-                <option>Cleaning</option>
+                <option className="bg-white text-black">Select Category</option>
+                <option className="bg-white text-black">Plumbing</option>
+                <option className="bg-white text-black">Electrical</option>
+                <option className="bg-white text-black">Carpentry</option>
+                <option className="bg-white text-black">Cleaning</option>
               </select>
 
               <select
@@ -284,19 +285,35 @@ export default function Registration() {
                 onChange={(e) => setSubcategory(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-white/50 bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">Select Subcategory</option>
+                <option className="bg-white text-black">Select Subcategory</option>
                 {category === "Plumbing" && (
                   <>
-                    <option>Pipe Repair</option>
-                    <option>Faucet Installation</option>
+                    <option className="bg-white text-black">Pipe Repair</option>
+                    <option className="bg-white text-black">Faucet Installation</option>
                   </>
                 )}
                 {category === "Electrical" && (
                   <>
-                    <option>Wiring</option>
-                    <option>Appliance Repair</option>
+                    <option className="bg-white text-black">Wiring</option>
+                    <option className="bg-white text-black">Appliance Repair</option>
                   </>
                 )}
+
+                {category === "Carpentry" && (
+    <>
+      <option className="bg-white text-black">Furniture Assembly</option>
+      <option className="bg-white text-black">Door Repair</option>
+      <option className="bg-white text-black">Custom Woodwork</option>
+    </>
+  )}
+
+  {category === "Cleaning" && (
+    <>
+      <option className="bg-white text-black">Home Cleaning</option>
+      <option className="bg-white text-black">Office Cleaning</option>
+      <option className="bg-white text-black">Carpet Cleaning</option>
+    </>
+  )}
               </select>
 
               <textarea
@@ -316,27 +333,35 @@ export default function Registration() {
               />
 
               {/* Availability */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Days (e.g. Mon - Fri)"
-                  value={availabilityDays}
-                  onChange={(e) => setAvailabilityDays(e.target.value)}
-                  className="flex-1 px-2 py-3 rounded-md border border-white/50 bg-white/20 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-1/3 px-3 py-3 rounded-md border border-white/50 bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-1/3 px-3 py-3 rounded-md border border-white/50 bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+              {/* Availability */}
+<div className="flex flex-col gap-2">
+  <label className="text-white text-sm">
+    Availability (24-hour format)
+  </label>
+
+  <div className="flex items-center gap-2">
+    <input
+      type="text"
+      placeholder="Days (e.g. Mon - Fri)"
+      value={availabilityDays}
+      onChange={(e) => setAvailabilityDays(e.target.value)}
+      className="flex-1 px-2 py-3 rounded-md border border-white/50 bg-white/20 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    />
+    <input
+      type="time"
+      value={startTime}
+      onChange={(e) => setStartTime(e.target.value)}
+      className="w-1/3 px-3 py-3 rounded-md border border-white/50 bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    />
+    <input
+      type="time"
+      value={endTime}
+      onChange={(e) => setEndTime(e.target.value)}
+      className="w-1/3 px-3 py-3 rounded-md border border-white/50 bg-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    />
+  </div>
+</div>
+
 
               {/* Document Upload */}
               <div className="w-full">
