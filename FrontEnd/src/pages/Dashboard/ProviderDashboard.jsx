@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser,FiMessageCircle,FiX,FiMessageSquare ,FiClipboard,FiAlertTriangle,FiSend} from "react-icons/fi";
+import { FiHome, FiLogOut, FiClock, FiXCircle, FiUser,FiMail,FiMapPin,FiBriefcase,FiStar,FiSave,FiEdit2,FiMessageCircle,FiX,FiMessageSquare ,FiClipboard,FiAlertTriangle,FiSend} from "react-icons/fi";
 import { BiClipboard } from "react-icons/bi";
 import { GiHammerNails } from "react-icons/gi";
 import { AiOutlineCheckCircle, AiOutlineRadiusSetting ,} from "react-icons/ai";
@@ -172,6 +172,37 @@ const [token] = useState(localStorage.getItem("token")); // Removed setToken - n
   };
   fetchCustomers();
 }, []);
+
+ useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: providerData } = await getMyProfile();
+        const servicesRes = await getServicesByProvider(providerData.id);
+        const bookingsRes = await getBookingsByProvider(providerData.id);
+        const ratingRes = await getProviderAverageRating(providerData.id);
+
+        const enhancedProvider = {
+          ...providerData,
+          servicesCount: servicesRes.data?.length || 0,
+          bookingsCount: bookingsRes.data?.length || 0,
+          averageRating: ratingRes.data || 0,
+        };
+
+        setProvider(enhancedProvider);
+        setEditProfileData({ ...enhancedProvider });
+        setServices(servicesRes.data || []);
+        setBookings(bookingsRes.data || []);
+      } catch (err) {
+        console.error("Error fetching provider data:", err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
 
 
   const handleLogout = () => {
@@ -904,11 +935,11 @@ console.log("Booking ID:", b.id, "BookingDateTime:", bookingDateTime, "Now:", no
 
 function ProfileTab({
   provider,
+  setProvider,
   isEditingProfile,
   setIsEditingProfile,
   editProfileData,
   setEditProfileData,
-  setProvider,
 }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -917,93 +948,233 @@ function ProfileTab({
     setLoading(true);
     setErrorMsg("");
     try {
-      // Send all existing fields + edited fields
       const updatedProfile = { ...provider, ...editProfileData };
       const res = await updateUser(provider.id, updatedProfile);
-      setProvider(res.data); // update parent state
-      setEditProfileData({ ...res.data }); // reset edit form
+
+      setProvider(res.data);
+      setEditProfileData({ ...res.data });
       setIsEditingProfile(false);
-      alert("Profile updated successfully!");
+
+      alert("✅ Profile updated successfully!");
     } catch (err) {
       console.error("Failed to update profile:", err);
-      setErrorMsg(err.response?.data?.message || "Failed to save profile. Try again.");
+      setErrorMsg(
+        err.response?.data?.message || "Failed to save profile. Try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancelProfile = () => {
-    setEditProfileData({ ...provider }); // revert to full provider data
+    setEditProfileData({ ...provider });
     setIsEditingProfile(false);
     setErrorMsg("");
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl border shadow w-full max-w-md relative">
-      <h2 className="text-xl font-semibold mb-4" style={{ color: rustBrown }}>My Profile</h2>
-      {errorMsg && <p className="text-red-600 mb-2">{errorMsg}</p>}
-      <div className="flex flex-col gap-2">
-        {isEditingProfile ? (
-          <>
-            <input
-              type="text"
-              value={editProfileData.name || ""}
-              onChange={(e) => setEditProfileData({ ...editProfileData, name: e.target.value })}
-              className="border px-3 py-2 rounded"
-              placeholder="Name"
-            />
-            <input
-              type="email"
-              value={editProfileData.email || ""}
-              onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
-              className="border px-3 py-2 rounded"
-              placeholder="Email"
-            />
-            <input
-              type="text"
-              value={editProfileData.location || ""}
-              onChange={(e) => setEditProfileData({ ...editProfileData, location: e.target.value })}
-              className="border px-3 py-2 rounded"
-              placeholder="Location"
-            />
-           <div className="flex gap-2 mt-3">
-  <button
-    onClick={handleSaveProfile}
-    className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ${
-      loading ? "opacity-50 cursor-not-allowed" : ""
-    }`}
-    disabled={loading}
-  >
-    {loading ? "Saving..." : "Save"}
-  </button>
-  <button
-    onClick={handleCancelProfile}
-    className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-    disabled={loading}
-  >
-    Cancel
-  </button>
-</div>
+    <div className="max-w-6xl mx-auto py-10 px-6">
+      <div className="flex flex-col md:flex-row bg-white shadow-lg rounded-2xl overflow-hidden border border-[#d5b09c]/40">
+        {/* LEFT PANEL */}
+        <aside className="md:w-1/3 bg-gradient-to-b from-[#5b210a] to-[#9a4720] text-white flex flex-col justify-center items-center p-10 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10"></div>
+          <div className="relative z-10 flex flex-col items-center text-center space-y-5">
+            {/* Avatar initials */}
+            <div className="relative w-28 h-28 flex items-center justify-center rounded-full bg-white/20 border-4 border-white shadow-md text-3xl font-bold tracking-wide">
+              {provider?.name
+                ? provider.name
+                    .split(" ")
+                    .map((n, i) => (i === 0 ? n.slice(0, 2) : n[0]))
+                    .join("")
+                    .toUpperCase()
+                : "P"}
+            </div>
 
-          </>
-        ) : (
-          <>
-            <p><strong>Name:</strong> {provider.name}</p>
-            <p><strong>Email:</strong> {provider.email}</p>
-            <p><strong>Location:</strong> {provider.location || "N/A"}</p>
+            <h3 className="text-2xl font-semibold tracking-wide drop-shadow-sm">
+              {provider?.name || "Provider"}
+            </h3>
+            <p className="text-white/80 text-sm flex items-center gap-2">
+              <FiMail /> {provider?.email || "Not available"}
+            </p>
+            <div className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-sm">
+              <FiMapPin />
+              {provider?.location || "Add location"}
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-2 w-full mt-4">
+              {[
+                {
+                  label: "Services",
+                  value: provider?.servicesCount ?? "—",
+                  icon: <FiBriefcase />,
+                },
+                {
+                  label: "Bookings",
+                  value: provider?.bookingsCount ?? "—",
+                  icon: <FiUser />,
+                },
+                {
+                  label: "Rating",
+                  value: provider?.averageRating
+                    ? provider.averageRating.toFixed(1)
+                    : "—",
+                  icon: <FiStar />,
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="bg-white/20 rounded-lg py-2 px-3 flex flex-col items-center shadow-sm"
+                >
+                  <div className="text-lg">{stat.icon}</div>
+                  <p className="font-bold text-lg">{stat.value}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-white/70">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+
             <button
-              onClick={() => setIsEditingProfile(true)}
-              className="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              Edit Profile
+  onClick={() => {
+    if (!isEditingProfile) {
+      // when opening edit mode, pre-fill data
+      setEditProfileData({ ...provider });
+    }
+    setIsEditingProfile((v) => !v);
+  }}
+  className="mt-4 flex items-center gap-2 px-5 py-2 bg-white text-[#5b210a] rounded-full font-semibold hover:bg-[#f3e5dc] transition-all duration-300 shadow-md hover:shadow-lg"
+>
+
+              {isEditingProfile ? <FiX /> : <FiEdit2 />}
+              {isEditingProfile ? "Close Editor" : "Edit Profile"}
             </button>
-          </>
-        )}
+          </div>
+        </aside>
+
+        {/* RIGHT PANEL */}
+        <section className="flex-1 bg-[#fffaf8] p-10">
+          <div className="mb-6 border-b-2 border-[#5b210a]/20 pb-2">
+            <h2 className="text-2xl font-bold text-[#5b210a] tracking-wide">
+              {isEditingProfile ? "Edit Profile" : "Profile Details"}
+            </h2>
+          </div>
+
+          {errorMsg && (
+            <div className="mb-4 px-4 py-3 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-md">
+              {errorMsg}
+            </div>
+          )}
+
+          {/* EDIT MODE */}
+          {isEditingProfile ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                  <FiUser className="text-[#5b210a]" /> Full Name
+                </label>
+                <input
+                  type="text"
+                  value={editProfileData.name || ""}
+                  onChange={(e) =>
+                    setEditProfileData({
+                      ...editProfileData,
+                      name: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#9a4720] focus:outline-none shadow-sm"
+                />
+              </div>
+
+              {/* Email (Read-only) */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                  <FiMail className="text-[#5b210a]" /> Email
+                </label>
+                <input
+                  type="email"
+                  value={editProfileData.email || ""}
+                  readOnly
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed shadow-sm"
+                />
+              </div>
+
+              {/* Location */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                  <FiMapPin className="text-[#5b210a]" /> Location
+                </label>
+                <input
+                  type="text"
+                  value={editProfileData.location || ""}
+                  onChange={(e) =>
+                    setEditProfileData({
+                      ...editProfileData,
+                      location: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#9a4720] focus:outline-none shadow-sm"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="md:col-span-2 flex flex-wrap gap-4 pt-4">
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={loading}
+                  className={`flex items-center gap-2 px-6 py-2 rounded-full text-white font-semibold bg-gradient-to-r from-[#5b210a] to-[#9a4720] hover:from-[#7a3114] hover:to-[#b85d2a] transition-all shadow-md hover:shadow-lg ${
+                    loading ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <FiSave />
+                  {loading ? "Saving..." : "Save Changes"}
+                </button>
+
+                <button
+                  onClick={handleCancelProfile}
+                  className="flex items-center gap-2 px-6 py-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm transition-all"
+                >
+                  <FiX /> Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            // VIEW MODE
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-5 bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition">
+                <p className="text-sm text-gray-500 flex items-center gap-1">
+                  <FiUser className="text-[#9a4720]" /> Full Name
+                </p>
+                <p className="font-semibold text-gray-800 mt-1 ">
+                  {provider?.name || "—"}
+                </p>
+              </div>
+
+              <div className="p-5 bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition">
+                <p className="text-sm text-gray-500 flex items-center gap-1">
+                  <FiMail className="text-[#9a4720]" /> Email
+                </p>
+                <p className="font-semibold text-gray-800 mt-1 break-all">
+                  {provider?.email || "—"}
+                </p>
+              </div>
+
+              <div className="p-5 bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition md:col-span-2">
+                <p className="text-sm text-gray-500 flex items-center gap-1">
+                  <FiMapPin className="text-[#9a4720]" /> Location
+                </p>
+                <p className="font-semibold text-gray-800 mt-1 ">
+                  {provider?.location || "Add your location"}
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
 }
-
 function ReviewsTab({ reviews }) {
   const [allReviews, setAllReviews] = useState(reviews || []);
   // Removed unused variables: replyText, setReplyText, selectedReview, setSelectedReview, loading, setLoading, handleReply

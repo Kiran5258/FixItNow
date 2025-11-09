@@ -6,6 +6,7 @@ import {
   getReviewsByProvider,
   getProviderAverageRating,
   addReview,
+  getProviderById,
   createBooking,
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -288,6 +289,7 @@ export default function ProviderDetailPage() {
   const [bookingService, setBookingService] = useState(null);
   const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [providerDetails, setProviderDetails] = useState(null);
 
 
 
@@ -299,6 +301,9 @@ export default function ProviderDetailPage() {
       const allServices = await getAllServices();
       const services = allServices.data.filter((s) => s.providerId === parseInt(id));
       setProviderServices(services);
+      const providerRes = await getProviderById(id);
+setProviderDetails(providerRes.data);
+
 
       const preSelected = services.find((s) => s.id === serviceIdFromBooking) || services[0];
       setSelectedService(preSelected || null);
@@ -347,6 +352,7 @@ setHasCompletedBooking(false); // optional, if you want to hide review form
     return <p className="text-center mt-10 text-gray-400 animate-pulse">Loading...</p>;
 
   const provider = providerServices[0];
+  console.log(providerServices);
   const filteredReviews = reviews.filter((r) => r.service?.id === selectedService?.id);
 
   return (
@@ -398,7 +404,7 @@ setHasCompletedBooking(false); // optional, if you want to hide review form
 
             <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
               <h3 className="font-semibold mb-1">📞 Contact</h3>
-              <p>Email: {provider.email || "Not available"}</p>
+              <p>Email: {providerDetails?.email || "Not available"}</p>
               <p>Phone: {provider.phone || "Not available"}</p>
             </div>
           </div>

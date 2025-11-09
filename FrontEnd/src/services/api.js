@@ -67,6 +67,7 @@ export const deleteUser = (id) => API.delete(`/users/${id}`);
 export const getUserByEmail = (email) => API.get(`/users/email/${email}`);
 // 👤 Get all customers (for providers or admin)
 export const getCustomers = () => API.get("/users/customers");
+export const getProviderById = (providerId) => API.get(`/users/id/${providerId}`);
 
 
 

@@ -73,7 +73,7 @@ export default function Login() {
       // Check verification status
       if (!verified) {
         setError(
-          message || "Your provider account is pending admin verification. Please wait until approved."
+          "Your provider account is pending for admin verification. Please wait until approved."
         );
         return;
       }
