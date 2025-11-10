@@ -10,6 +10,7 @@ import {
   createBooking,
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { API_URL } from "../../config/api.config";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -191,14 +192,14 @@ function BookingModal({ service, customer, onClose }) {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:8080/api/bookings/${bookingId}`, {
+        const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return setLoading(false);
         const booking = await res.json();
 
         const reviewRes = await fetch(
-          `http://localhost:8080/api/reviews/booking/${bookingId}`,
+          `${API_URL}/reviews/booking/${bookingId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircleIcon, TrashIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { getAllDocuments, approveDocument, deleteDocument, rejectDocument } from '../../../../services/api';
+import { API_BASE_URL } from '../../../../config/api.config';
 
 export default function VerifyDocumentsTab() {
   const [documents, setDocuments] = useState([]);
@@ -84,7 +85,7 @@ export default function VerifyDocumentsTab() {
                 Uploaded: {new Date(doc.uploadedAt).toLocaleString()}
               </p>
               <a
-                href={`http://localhost:8080/${doc.fileUrl.replace(/\\/g, '/')}`}
+                href={`${API_BASE_URL}/${doc.fileUrl.replace(/\\/g, '/')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline text-sm mb-3 inline-block break-words"

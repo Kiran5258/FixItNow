@@ -77,7 +77,7 @@ const ChatNotifications = () => {
     }
 
     try {
-      const socket = new SockJS("http://localhost:8080/ws");
+      const socket = new SockJS(WS_URL);
       const stompClient = Stomp.over(socket);
 
       stompClient.connect(

@@ -1,8 +1,8 @@
 // API Base URL Configuration
-export const BASE_URL = "http://localhost:8080";
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 // WebSocket URL
-export const WS_URL = "http://localhost:8080/ws";
+export const WS_URL = import.meta.env.VITE_WS_URL || "http://localhost:8080/ws";
 
 // API Endpoints
 export const API_ENDPOINTS = {

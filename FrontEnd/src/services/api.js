@@ -1,8 +1,9 @@
 import axios from "axios";
+import { API_URL, API_BASE_URL } from "../config/api.config";
 
 // ✅ Create an Axios instance for protected APIs
 const API = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: API_URL,
 });
 
 API.interceptors.request.use(
@@ -24,18 +25,18 @@ API.interceptors.request.use(
 // AUTH APIs (no token needed)
 // =====================
 export const register = (userData) => {
-  return axios.post("http://localhost:8080/api/auth/register", userData);
+  return axios.post(`${API_URL}/auth/register`, userData);
 };
 
 export const login = (credentials) => {
-  return axios.post("http://localhost:8080/api/auth/login", credentials);
+  return axios.post(`${API_URL}/auth/login`, credentials);
 };
 
 export const uploadProviderDocument = (providerId, file) => {
   const formData = new FormData();
   formData.append("file", file);
   return axios.post(
-    `http://localhost:8080/api/auth/upload-documents/${providerId}`,
+    `${API_URL}/auth/upload-documents/${providerId}`,
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },

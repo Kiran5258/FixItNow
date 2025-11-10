@@ -10,6 +10,7 @@ import {
 } from "react-icons/hi";
 import { FaHome, FaWrench } from "react-icons/fa";
 import { register } from "../../services/api";
+import { API_URL } from "../../config/api.config";
 
 export default function Registration() {
   const [fullname, setFullname] = useState("");
@@ -149,7 +150,7 @@ export default function Registration() {
         formData.append("file", document);
 
         await fetch(
-          `http://localhost:8080/api/auth/upload-documents/${userId}`,
+          `${API_URL}/auth/upload-documents/${userId}`,
           { method: "POST", body: formData }
         );
       }

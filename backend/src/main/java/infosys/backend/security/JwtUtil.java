@@ -7,6 +7,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -21,9 +22,15 @@ public class JwtUtil {
 
     private final UserRepository userRepository; // Needed for getAuthentication
 
-    private final String secret = "fixitnowSecretKey123fixitnowSecretKey123"; 
-    private final long expiration = 3600000; // 1 hour
-    private final Key key = Keys.hmacShaKeyFor(secret.getBytes());
+    @Value("${JWT_SECRET}")
+    private String secret;
+    
+    @Value("${JWT_EXPIRATION}")
+    private long expiration;
+    
+    private Key getKey() {
+        return Keys.hmacShaKeyFor(secret.getBytes());
+    }
 
     // ---------------- JWT Methods ---------------- //
 
@@ -34,7 +41,7 @@ public class JwtUtil {
                 .claim("role", role) // include role in token
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(key, SignatureAlgorithm.HS256)
+                .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -59,7 +66,7 @@ public class JwtUtil {
 
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(key)
+                .setSigningKey(getKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

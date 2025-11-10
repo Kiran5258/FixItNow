@@ -8,6 +8,7 @@ import { sendMessageAPI, getMessagesWithUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import axiosInstance from "../utils/axiosInstance";
+import { API_URL, WS_URL } from "../config/api.config";
 
 const ChatComponent = ({
   receiverId,
@@ -52,7 +53,7 @@ const ChatComponent = ({
     const fetchReceiverName = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:8080/api/users/id/${receiverId}`,
+          `${API_URL}/users/id/${receiverId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setReceiverName(res.data?.name || "Unknown User");
@@ -90,7 +91,7 @@ const ChatComponent = ({
     }
 
     console.log("🌐 Opening WS connection for chat", receiverId);
-    const socket = new SockJS("http://localhost:8080/ws");
+    const socket = new SockJS(WS_URL);
     const client = new Client({
       webSocketFactory: () => socket,
       connectHeaders: { Authorization: `Bearer ${token}` },
