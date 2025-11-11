@@ -30,7 +30,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('PROVIDER')")
 @GetMapping("/providers")
 public ResponseEntity<List<User>> getAllProviders() {
     List<User> providers = userService.getAllUsers().stream()

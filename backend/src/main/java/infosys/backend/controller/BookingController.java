@@ -58,7 +58,7 @@ public class BookingController {
         return bookingService.updateBookingStatus(bookingId, status);
     }
 
-    // ✅ Get all bookings (Admin only)
+    
 @PreAuthorize("hasRole('CUSTOMER') or hasRole('PROVIDER') or hasRole('ADMIN')")
 @GetMapping("/all")
 public List<Booking> getAllBookings() {
