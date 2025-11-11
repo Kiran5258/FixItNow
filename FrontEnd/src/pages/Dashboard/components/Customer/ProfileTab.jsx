@@ -125,10 +125,9 @@ export default function ProfileTab({
                 <input
                   type="email"
                   value={editProfileData.email || ""}
-                  onChange={(e) =>
-                    setEditProfileData({ ...editProfileData, email: e.target.value })
-                  }
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#9a4720] focus:outline-none shadow-sm"
+                  
+                  readOnly
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed shadow-sm"
                 />
               </div>
 
