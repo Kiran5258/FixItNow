@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate ,useLocation} from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
 import {
   getAllServices,
   getReviewsByProvider,
   getProviderAverageRating,
   addReview,
+  getProviderById,
   createBooking,
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -85,7 +86,7 @@ function BookingModal({ service, customer, onClose }) {
     try {
       const res = await createBooking({
         customer: { id: customer.id },
-        provider: { id: service.providerId || service.id },
+        provider: { id: service.providerId }, // ✅ FIXED - always correct user id
         service: { id: service.id },
         bookingDate: formData.bookingDate,
         timeSlot: formData.timeSlot,
@@ -94,7 +95,7 @@ function BookingModal({ service, customer, onClose }) {
       });
 
       navigate("/booking-summary", {
-        state: { booking: { ...res.data, service, providerName: service.providerName || "Provider" } },
+        state: { booking: { ...res.data, service, providerName: service.providerName } },
       });
       onClose();
     } catch (err) {
@@ -173,16 +174,25 @@ function BookingModal({ service, customer, onClose }) {
   );
 }
 
-
-  function AddReviewSection({ user, providerId, bookingId, selectedService, newReview, setNewReview, handleSubmitReview, hasCompletedBooking, setHasCompletedBooking ,alreadyReviewed,
-  setAlreadyReviewed}) {
+// =====================
+// ADD REVIEW SECTION
+// =====================
+function AddReviewSection({
+  user,
+  providerId,
+  bookingId,
+  selectedService,
+  newReview,
+  setNewReview,
+  handleSubmitReview,
+  hasCompletedBooking,
+  setHasCompletedBooking,
+  alreadyReviewed,
+  setAlreadyReviewed
+}) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
- 
-  
 
-
-  // Existing useEffect stays the same to check booking status
   useEffect(() => {
     const checkCompletedBooking = async () => {
       if (!bookingId || !token) {
@@ -206,10 +216,10 @@ function BookingModal({ service, customer, onClose }) {
         else if (reviewRes.ok) existingReview = await reviewRes.json();
 
         setHasCompletedBooking(
-  booking.status?.toUpperCase() === "COMPLETED" &&
-  booking.provider?.id === providerId
-);
-setAlreadyReviewed(existingReview !== null);
+          booking.status?.toUpperCase() === "COMPLETED" &&
+            booking.provider?.id === providerId
+        );
+        setAlreadyReviewed(existingReview !== null);
 
       } catch (err) {
         console.error(err);
@@ -223,7 +233,9 @@ setAlreadyReviewed(existingReview !== null);
 
   if (loading)
     return <p className="text-center text-gray-400 animate-pulse mt-4">Checking booking status...</p>;
-const canReview = hasCompletedBooking && !alreadyReviewed;
+
+  const canReview = hasCompletedBooking && !alreadyReviewed;
+
   return (
     <div className="bg-white rounded-2xl shadow-md p-5 mt-6 space-y-3 border border-[#f1c6ad]">
       <h4 className="font-bold text-[#6e290c]">Write a Review</h4>
@@ -236,7 +248,9 @@ const canReview = hasCompletedBooking && !alreadyReviewed;
             className="border w-full px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#6e290c] focus:outline-none"
           >
             {[5, 4, 3, 2, 1].map((r) => (
-              <option key={r} value={r}>{r} Star{r > 1 ? "s" : ""}</option>
+              <option key={r} value={r}>
+                {r} Star{r > 1 ? "s" : ""}
+              </option>
             ))}
           </select>
 
@@ -266,16 +280,15 @@ const canReview = hasCompletedBooking && !alreadyReviewed;
   );
 }
 
-
-
+// =====================
+// MAIN COMPONENT
+// =====================
 export default function ProviderDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams(); // THIS **IS THE PROVIDER USER ID**
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-   const location = useLocation(); // ✅ add this
-
-  // Booking info from navigation (if coming from Bookings tab)
   const bookingId = location.state?.bookingId;
   const serviceIdFromBooking = location.state?.serviceId;
 
@@ -288,66 +301,82 @@ export default function ProviderDetailPage() {
   const [bookingService, setBookingService] = useState(null);
   const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
-
-
-
-  
+  const [providerDetails, setProviderDetails] = useState(null);
 
   useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const allServices = await getAllServices();
-      const services = allServices.data.filter((s) => s.providerId === parseInt(id));
-      setProviderServices(services);
+    const fetchData = async () => {
+      try {
+        // Fetch all services (already contains providerId)
+        const allServices = await getAllServices();
+        const services = allServices.data.filter(
+          (s) => s.providerId === parseInt(id)
+        );
 
-      const preSelected = services.find((s) => s.id === serviceIdFromBooking) || services[0];
-      setSelectedService(preSelected || null);
+        setProviderServices(services);
 
-      const avgRes = await getProviderAverageRating(id);
-      setAverageRating(avgRes.data || 0);
+        const providerUserId = parseInt(id);
 
-      const reviewsRes = await getReviewsByProvider(id);
-      setReviews(reviewsRes.data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  fetchData();
-}, [id, serviceIdFromBooking]);
+        // Fetch provider user details
+        const providerRes = await getProviderById(providerUserId);
+        setProviderDetails(providerRes.data);
 
+        // Preselect service
+        const preSelected =
+          services.find((s) => s.id === serviceIdFromBooking) || services[0];
+        setSelectedService(preSelected || null);
 
+        // Get provider average rating
+        const avgRes = await getProviderAverageRating(providerUserId);
+        setAverageRating(avgRes.data || 0);
 
+        // Fetch reviews correctly
+        const reviewsRes = await getReviewsByProvider(providerUserId);
+        setReviews(reviewsRes.data || []);
+
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchData();
+  }, [id, serviceIdFromBooking]);
 
   const handleSubmitReview = async () => {
     if (!user) return alert("Please log in to submit a review.");
     if (!newReview.comment.trim()) return alert("Please write a comment.");
+
     try {
       await addReview({
-         booking: bookingId ? { id: bookingId } : null,
+        booking: bookingId ? { id: bookingId } : null,
         customer: { id: user.id },
-        provider: { id: parseInt(id) },
+        provider: { id: parseInt(id) }, // correct provider user id
         service: { id: selectedService.id },
         rating: newReview.rating,
         comment: newReview.comment,
       });
+
       setNewReview({ rating: 5, comment: "" });
-      const res = await getReviewsByProvider(id);
+
+      const res = await getReviewsByProvider(parseInt(id));
       setReviews(res.data || []);
-      setAlreadyReviewed(true); // mark as reviewed
-setHasCompletedBooking(false); // optional, if you want to hide review form
+      setAlreadyReviewed(true);
+
     } catch (err) {
       console.error(err);
       alert("Failed to submit review.");
     }
   };
 
-  const handleBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/customer-dashboard"));
+  const handleBack = () =>
+    window.history.length > 1 ? navigate(-1) : navigate("/customer-dashboard");
 
   if (!providerServices.length)
-    return <p className="text-center mt-10 text-gray-400 animate-pulse">Loading...</p>;
+    return (
+      <p className="text-center mt-10 text-gray-400 animate-pulse">Loading...</p>
+    );
 
   const provider = providerServices[0];
-  const filteredReviews = reviews.filter((r) => r.service?.id === selectedService?.id);
+  const filteredReviews = reviews;
 
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gradient-to-b from-[#f6e5da] to-white min-h-screen">
@@ -369,18 +398,39 @@ setHasCompletedBooking(false); // optional, if you want to hide review form
               alt="Provider"
               className="w-28 h-28 rounded-full border-4 border-white shadow-md"
             />
-            <h2 className="text-3xl font-bold text-white">{provider.providerName}</h2>
+            <h2 className="text-3xl font-bold text-white">
+              {provider.providerName}
+            </h2>
             <p className="text-white/80">{provider.location}</p>
-            <span className="px-3 py-1 bg-white text-[#6e290c] rounded-full font-semibold shadow">{provider.category}</span>
+            <span className="px-3 py-1 bg-white text-[#6e290c] rounded-full font-semibold shadow">
+              {provider.category}
+            </span>
 
             <div className="flex justify-between w-full text-center mt-4">
               {[
-                { label: "Rating", value: averageRating.toFixed(1), color: "text-yellow-300" },
-                { label: "Services", value: providerServices.length, color: "text-green-300" },
-                { label: "Reviews", value: reviews.length, color: "text-orange-300" },
+                {
+                  label: "Rating",
+                  value: averageRating.toFixed(1),
+                  color: "text-yellow-300",
+                },
+                {
+                  label: "Services",
+                  value: providerServices.length,
+                  color: "text-green-300",
+                },
+                {
+                  label: "Reviews",
+                  value: reviews.length,
+                  color: "text-orange-300",
+                },
               ].map((stat, i) => (
-                <div key={i} className="bg-white/20 rounded-xl p-3 flex-1 mx-1">
-                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                <div
+                  key={i}
+                  className="bg-white/20 rounded-xl p-3 flex-1 mx-1"
+                >
+                  <p className={`text-2xl font-bold ${stat.color}`}>
+                    {stat.value}
+                  </p>
                   <p className="text-xs text-white/80">{stat.label}</p>
                 </div>
               ))}
@@ -393,12 +443,14 @@ setHasCompletedBooking(false); // optional, if you want to hide review form
 
             <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
               <h3 className="font-semibold mb-1">👤 About</h3>
-              <p className="text-sm">{provider.about || "This provider hasn’t added any details yet."}</p>
+              <p className="text-sm">
+                {provider.about || "This provider hasn’t added any details yet."}
+              </p>
             </div>
 
             <div className="w-full bg-white/20 p-4 rounded-xl text-white mt-4">
               <h3 className="font-semibold mb-1">📞 Contact</h3>
-              <p>Email: {provider.email || "Not available"}</p>
+              <p>Email: {providerDetails?.email || "Not available"}</p>
               <p>Phone: {provider.phone || "Not available"}</p>
             </div>
           </div>
@@ -427,10 +479,18 @@ setHasCompletedBooking(false); // optional, if you want to hide review form
           {activeTab === "services" && selectedService && (
             <>
               <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-[#f1c6ad]">
-                <h3 className="text-2xl font-bold text-[#6e290c] mb-2">{selectedService.subcategory}</h3>
-                <p className="text-gray-700 mb-4">{selectedService.description}</p>
-                <p className="font-semibold text-[#6e290c] text-lg mb-2">Price: ₹{selectedService.price}</p>
-                <p className="text-sm text-gray-600 mb-4">Availability: {selectedService.availability || "Not specified"}</p>
+                <h3 className="text-2xl font-bold text-[#6e290c] mb-2">
+                  {selectedService.subcategory}
+                </h3>
+                <p className="text-gray-700 mb-4">
+                  {selectedService.description}
+                </p>
+                <p className="font-semibold text-[#6e290c] text-lg mb-2">
+                  Price: ₹{selectedService.price}
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Availability: {selectedService.availability || "Not specified"}
+                </p>
                 <button
                   onClick={() => setBookingService(selectedService)}
                   className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
@@ -439,24 +499,34 @@ setHasCompletedBooking(false); // optional, if you want to hide review form
                 </button>
               </div>
 
-              <h4 className="text-lg font-semibold text-[#6e290c] mb-3">Other Services Offered</h4>
+              <h4 className="text-lg font-semibold text-[#6e290c] mb-3">
+                Other Services Offered
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {providerServices.filter((s) => s.id !== selectedService.id).map((service) => (
-                  <div
-                    key={service.id}
-                    className="bg-white rounded-2xl shadow p-5 hover:shadow-lg transition border border-[#f1c6ad]"
-                  >
-                    <h3 className="text-lg font-bold text-[#6e290c] mb-1">{service.subcategory}</h3>
-                    <p className="text-gray-600 text-sm line-clamp-2 mb-2">{service.description}</p>
-                    <p className="text-[#6e290c] font-semibold mb-3">₹{service.price}</p>
-                    <button
-                      onClick={() => setSelectedService(service)}
-                      className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
+                {providerServices
+                  .filter((s) => s.id !== selectedService.id)
+                  .map((service) => (
+                    <div
+                      key={service.id}
+                      className="bg-white rounded-2xl shadow p-5 hover:shadow-lg transition border border-[#f1c6ad]"
                     >
-                      View Service
-                    </button>
-                  </div>
-                ))}
+                      <h3 className="text-lg font-bold text-[#6e290c] mb-1">
+                        {service.subcategory}
+                      </h3>
+                      <p className="text-gray-600 text-sm line-clamp-2 mb-2">
+                        {service.description}
+                      </p>
+                      <p className="text-[#6e290c] font-semibold mb-3">
+                        ₹{service.price}
+                      </p>
+                      <button
+                        onClick={() => setSelectedService(service)}
+                        className="px-6 py-2 bg-[#6e290c] text-white rounded-full hover:bg-[#a44a1d] transition"
+                      >
+                        View Service
+                      </button>
+                    </div>
+                  ))}
               </div>
             </>
           )}
@@ -465,35 +535,46 @@ setHasCompletedBooking(false); // optional, if you want to hide review form
           {activeTab === "reviews" && (
             <div className="space-y-4">
               <h4 className="text-lg font-semibold text-[#6e290c]">
-                Reviews for {selectedService?.category} - {selectedService?.subcategory}
+                Reviews for {selectedService?.category} -{" "}
+                {selectedService?.subcategory}
               </h4>
 
               {filteredReviews.length === 0 && (
                 <p className="text-gray-400 text-center mt-10 animate-pulse">
-                  No reviews for this service yet.
+                  No reviews yet.
                 </p>
               )}
 
               {filteredReviews.map((r) => {
-                const name = r.customer?.name || "Customer";
+                const name = r.customerName || "Customer";
                 return (
-                  <div key={r.id} className="bg-white rounded-2xl shadow-sm p-4 border border-[#f1c6ad]">
+                  <div
+                    key={r.id}
+                    className="bg-white rounded-2xl shadow-sm p-4 border border-[#f1c6ad]"
+                  >
                     <div className="flex gap-3 items-start">
                       <div className="w-10 h-10 rounded-full bg-[#6e290c] flex items-center justify-center text-white font-bold">
                         {name.charAt(0)}
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between items-center">
-                          <p className="font-semibold text-[#6e290c]">{name}</p>
+                          <p className="font-semibold text-[#6e290c]">
+                            {name}
+                          </p>
                           <div className="flex text-yellow-400">
                             {Array.from({ length: 5 }).map((_, i) => (
-                              <span key={i} className={i < r.rating ? "opacity-100" : "opacity-30"}>
+                              <span
+                                key={i}
+                                className={i < r.rating ? "opacity-100" : "opacity-30"}
+                              >
                                 ★
                               </span>
                             ))}
                           </div>
                         </div>
-                        <p className="text-gray-600 text-sm mt-1">{r.comment}</p>
+                        <p className="text-gray-600 text-sm mt-1">
+                          {r.comment}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -503,24 +584,27 @@ setHasCompletedBooking(false); // optional, if you want to hide review form
               <AddReviewSection
                 user={user}
                 providerId={parseInt(id)}
-                bookingId={bookingId} 
+                bookingId={bookingId}
                 selectedService={selectedService}
                 newReview={newReview}
                 setNewReview={setNewReview}
                 handleSubmitReview={handleSubmitReview}
                 hasCompletedBooking={hasCompletedBooking}
                 setHasCompletedBooking={setHasCompletedBooking}
-                 alreadyReviewed={alreadyReviewed}
-  setAlreadyReviewed={setAlreadyReviewed}
+                alreadyReviewed={alreadyReviewed}
+                setAlreadyReviewed={setAlreadyReviewed}
               />
             </div>
           )}
         </div>
       </div>
 
-      {/* BOOKING MODAL */}
       {bookingService && (
-        <BookingModal service={bookingService} customer={user} onClose={() => setBookingService(null)} />
+        <BookingModal
+          service={bookingService}
+          customer={user}
+          onClose={() => setBookingService(null)}
+        />
       )}
     </div>
   );

@@ -58,25 +58,24 @@ public class AuthController {
 
     // ✅ LOGIN
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
-        String token = authService.login(request);
-        User user = userService.findByEmail(request.getEmail());
-        String role = user.getRole().name();
+public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+    String token = authService.login(request);
+    User user = userService.findByEmail(request.getEmail());
 
-        // 🧩 Include verification info in response
-        AuthResponse response = new AuthResponse();
-        response.setToken(token);
-        response.setRole(role);
-        response.setVerified(user.isVerified());
+    AuthResponse response = new AuthResponse();
+    response.setToken(token);
+    response.setRole(user.getRole().name());
+    response.setVerified(user.isVerified());
+    response.setUserId(user.getId()); // ✅ Add this line
 
-        // 🛑 If provider is unverified, warn instead of allowing full access
-        if (user.getRole() == Role.PROVIDER && !user.isVerified()) {
-            response.setMessage("Your provider account is pending admin verification.");
-            return ResponseEntity.ok(response); // ✅ return 200 with warning
-        }
-
+    if (user.getRole() == Role.PROVIDER && !user.isVerified()) {
+        response.setMessage("Your provider account is pending admin verification.");
         return ResponseEntity.ok(response);
     }
+
+    return ResponseEntity.ok(response);
+}
+
 
     // ✅ DOCUMENT UPLOAD
     @PostMapping("/upload-documents/{providerId}")

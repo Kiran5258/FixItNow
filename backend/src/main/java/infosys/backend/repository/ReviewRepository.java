@@ -31,21 +31,29 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.service.id = :serviceId")
     Double findAverageRatingByServiceId(@Param("serviceId") Long serviceId);
 
-     @Modifying
-    @Transactional
-    @Query("DELETE FROM Review r WHERE r.service.id = :serviceId")
-    void deleteByServiceId(@Param("serviceId") Long serviceId);
-    @Transactional
-@Modifying
-@Query("DELETE FROM Review r WHERE r.customer.id = :userId")
-void deleteByCustomerId(@Param("userId") Long userId);
-
-@Transactional
-@Modifying
-@Query("DELETE FROM Review r WHERE r.provider.id = :userId")
-void deleteByProviderId(@Param("userId") Long userId);
+     
 
 Optional<Review> findByBookingId(Long bookingId);
     boolean existsByBookingId(Long bookingId);
+@Modifying(clearAutomatically = true)
+@Transactional
+@Query("DELETE FROM Review r WHERE r.service.id = :serviceId")
+void deleteByServiceId(@Param("serviceId") Long serviceId);
 
+@Modifying(clearAutomatically = true)
+@Transactional
+@Query("DELETE FROM Review r WHERE r.customer.id = :userId")
+void deleteByCustomerId(@Param("userId") Long userId);
+
+@Modifying(clearAutomatically = true)
+@Transactional
+@Query("DELETE FROM Review r WHERE r.provider.id = :userId")
+void deleteByProviderId(@Param("userId") Long userId);
+
+@Modifying(clearAutomatically = true)
+@Transactional
+@Query("DELETE FROM Review r WHERE r.booking.id = :bookingId")
+void deleteByBookingId(@Param("bookingId") Long bookingId);
+
+    
 }

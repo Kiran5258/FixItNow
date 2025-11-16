@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,10 +24,11 @@ public class ServiceProvider {
     private Long id;
 
     // Provider offering the service
-    @ManyToOne
-    @JoinColumn(name = "provider_id", referencedColumnName = "id", nullable = false)
-    @JsonBackReference
-    private User provider;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+@JoinColumn(name = "provider_id", nullable = false)
+@JsonIgnore
+private User provider;
+
 
     
 

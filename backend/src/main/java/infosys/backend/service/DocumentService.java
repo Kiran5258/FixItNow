@@ -25,6 +25,7 @@ public class DocumentService {
 
     private final String uploadDir = "uploads/";
 
+    // 📤 Upload a new document
     public Document uploadDocument(Long providerId, MultipartFile file) throws IOException {
         User provider = userRepository.findById(providerId)
                 .orElseThrow(() -> new RuntimeException("Provider not found"));
@@ -43,38 +44,62 @@ public class DocumentService {
                 .fileType(file.getContentType())
                 .fileUrl(filePath.toString())
                 .provider(provider)
+                .approved(false)
+                .rejected(false)
+                .rejectionReason(null)
+                .uploadedAt(LocalDateTime.now())
                 .build();
-document.setUploadedAt(LocalDateTime.now());
 
         return documentRepository.save(document);
     }
 
+    // 📄 Get documents for a specific provider
     public List<Document> getDocumentsByProvider(Long providerId) {
         User provider = userRepository.findById(providerId)
                 .orElseThrow(() -> new RuntimeException("Provider not found"));
         return documentRepository.findByProvider(provider);
     }
 
+    // 👀 Get all documents (admin)
     public List<Document> getAllDocuments() {
         return documentRepository.findAll();
     }
 
+    // ✅ Approve a document
     public Document approveDocument(Long id) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
         doc.setApproved(true);
-        documentRepository.save(doc);
+        doc.setRejected(false);
+        doc.setRejectionReason(null);
 
         // Optionally mark provider verified
         User provider = doc.getProvider();
         provider.setVerified(true);
         userRepository.save(provider);
 
-        return doc;
+        return documentRepository.save(doc);
     }
 
-   
+    // ❌ Reject a document with optional reason
+    public Document rejectDocument(Long id, String reason) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        doc.setApproved(false);
+        doc.setRejected(true);
+        doc.setRejectionReason(reason != null ? reason : "Rejected by admin");
 
+        // Optionally mark provider as unverified
+        User provider = doc.getProvider();
+        if (provider != null) {
+            provider.setVerified(false);
+            userRepository.save(provider);
+        }
+
+        return documentRepository.save(doc);
+    }
+
+    // 🗑️ Delete a document
     public void deleteDocument(Long id) {
         documentRepository.deleteById(id);
     }

@@ -75,20 +75,29 @@ public class ServiceProviderService {
 
     // ✅ Delete service (PROVIDER only)
     @Transactional
-    public void deleteService(Long id) {
-        ServiceProvider service = serviceRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Service not found with ID: " + id));
-        if (!serviceRepository.existsById(id)) {
-            throw new IllegalArgumentException("Service not found with ID: " + id);
-        }
-        reviewRepository.deleteByServiceId(id);
-        bookingRepository.deleteByServiceId(id);
-        User provider = service.getProvider();
-    provider.getServices().remove(service);
+public void deleteService(Long serviceId) {
 
-    // Now delete service explicitly (optional)
+    // 1. Fetch the service
+    ServiceProvider service = serviceRepository.findById(serviceId)
+            .orElseThrow(() -> new IllegalArgumentException("Service not found with ID: " + serviceId));
+
+    Long providerId = service.getProvider().getId();
+
+    System.out.println("========== SERVICE DELETE START: ID = " + serviceId + " ==========");
+
+    // 2. Delete reviews linked to this service
+    System.out.println("1) Deleting reviews...");
+    reviewRepository.deleteByServiceId(serviceId);
+
+    // 3. Delete bookings linked to this service
+    System.out.println("2) Deleting bookings...");
+    bookingRepository.deleteByServiceId(serviceId);
+
+    // 4. Delete service itself
+    System.out.println("3) Deleting service record...");
     serviceRepository.delete(service);
 
-    System.out.println("Deleted service with ID: " + id);
-    }
+    System.out.println("========== SERVICE DELETE SUCCESS ==========");
+}
+
 }

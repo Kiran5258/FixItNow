@@ -15,7 +15,9 @@ import java.util.Optional;
 public interface ChatNotificationRepository extends JpaRepository<ChatNotification, Long> {
     
     List<ChatNotification> findByReceiverOrderBySentAtDesc(User receiver);
-    
+    void deleteBySenderId(Long senderId);
+void deleteByReceiverId(Long receiverId);
+
     List<ChatNotification> findByReceiverAndIsReadFalseOrderBySentAtDesc(User receiver);
     
     long countByReceiverAndIsReadFalse(User receiver);

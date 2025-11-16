@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ReviewService {
@@ -24,75 +25,105 @@ public class ReviewService {
     @Autowired
     private UserRepository userRepository;
 
-    /**
-     * ✅ Add a new review (with safety checks)
-     */
-    public Review addReview(Review review) {
-        // Ensure timestamp is set
-        review.setCreatedAt(LocalDateTime.now());
+    // -----------------------------------------------------
+    // 1️⃣ ENTITY → DTO MAPPER (FINAL & ONLY VERSION)
+    // -----------------------------------------------------
+    public ReviewResponseDTO mapToDTO(Review r) {
+        ReviewResponseDTO dto = new ReviewResponseDTO();
 
-        // Validate customer and provider
-        if (review.getCustomer() != null && review.getCustomer().getId() != null) {
-            Optional<User> customerOpt = userRepository.findById(review.getCustomer().getId());
-            customerOpt.ifPresent(review::setCustomer);
+        dto.setId(r.getId());
+        dto.setBookingId(r.getBooking() != null ? r.getBooking().getId() : null);
+
+        if (r.getCustomer() != null) {
+            dto.setCustomerId(r.getCustomer().getId());
+            dto.setCustomerName(r.getCustomer().getName());
         }
 
-        if (review.getProvider() != null && review.getProvider().getId() != null) {
-            Optional<User> providerOpt = userRepository.findById(review.getProvider().getId());
-            providerOpt.ifPresent(review::setProvider);
+        if (r.getProvider() != null) {
+            dto.setProviderId(r.getProvider().getId());
+            dto.setProviderName(r.getProvider().getName());
+        }
+
+        if (r.getService() != null) {
+            dto.setServiceId(r.getService().getId());
+            dto.setServiceSubcategory(r.getService().getSubcategory());
+        }
+
+        dto.setRating(r.getRating());
+        dto.setComment(r.getComment());
+        dto.setReply(r.getReply());
+        dto.setCreatedAt(r.getCreatedAt());
+
+        return dto;
+    }
+
+    // -----------------------------------------------------
+    // 2️⃣ ADD REVIEW
+    // -----------------------------------------------------
+    public Review addReview(Review review) {
+        review.setCreatedAt(LocalDateTime.now());
+
+        if (review.getCustomer() != null) {
+            userRepository.findById(review.getCustomer().getId())
+                    .ifPresent(review::setCustomer);
+        }
+
+        if (review.getProvider() != null) {
+            userRepository.findById(review.getProvider().getId())
+                    .ifPresent(review::setProvider);
         }
 
         return reviewRepository.save(review);
     }
 
-    /**
-     * ✅ Get all reviews written for a specific provider
-     */
-    public List<Review> getReviewsByProvider(User provider) {
-        return reviewRepository.findByProvider(provider);
+    // -----------------------------------------------------
+    // 3️⃣ GET PROVIDER REVIEWS AS DTO LIST
+    // -----------------------------------------------------
+    public List<ReviewResponseDTO> getReviewsByProviderDTO(User provider) {
+        return reviewRepository.findByProvider(provider)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
-    /**
-     * ✅ Get all reviews written by a specific customer
-     */
+    // -----------------------------------------------------
+    // 4️⃣ GET CUSTOMER REVIEWS
+    // -----------------------------------------------------
     public List<Review> getReviewsByCustomer(User customer) {
         return reviewRepository.findByCustomer(customer);
     }
 
-    /**
-     * ✅ Calculate average rating for a provider
-     */
+    // -----------------------------------------------------
+    // 5️⃣ AVERAGE PROVIDER RATING
+    // -----------------------------------------------------
     public double getAverageRating(User provider) {
         List<Review> reviews = reviewRepository.findByProvider(provider);
         if (reviews.isEmpty()) return 0.0;
-        return reviews.stream()
-                      .mapToInt(Review::getRating)
-                      .average()
-                      .orElse(0.0);
+        return reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
     }
 
-    /**
-     * ✅ Get all reviews for a specific service
-     */
-    public List<Review> getReviewsByService(ServiceProvider service) {
-        return reviewRepository.findByService(service);
+    // -----------------------------------------------------
+    // 6️⃣ GET SERVICE REVIEWS AS DTO LIST
+    // -----------------------------------------------------
+    public List<ReviewResponseDTO> getReviewsByServiceDTO(ServiceProvider service) {
+        return reviewRepository.findByService(service)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
-    /**
-     * ✅ Calculate average rating for a specific service
-     */
+    // -----------------------------------------------------
+    // 7️⃣ AVERAGE SERVICE RATING
+    // -----------------------------------------------------
     public double getAverageRatingByService(ServiceProvider service) {
         List<Review> reviews = reviewRepository.findByService(service);
         if (reviews.isEmpty()) return 0.0;
-        return reviews.stream()
-                      .mapToInt(Review::getRating)
-                      .average()
-                      .orElse(0.0);
+        return reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
     }
 
-    /**
-     * ✅ Update an existing review
-     */
+    // -----------------------------------------------------
+    // 8️⃣ UPDATE REVIEW
+    // -----------------------------------------------------
     public Review updateReview(Long reviewId, Review newReview) {
         return reviewRepository.findById(reviewId)
                 .map(existing -> {
@@ -103,66 +134,48 @@ public class ReviewService {
                 .orElseThrow(() -> new RuntimeException("Review not found"));
     }
 
-    /**
-     * ✅ Delete a review
-     */
+    // -----------------------------------------------------
+    // 9️⃣ DELETE REVIEW
+    // -----------------------------------------------------
     public void deleteReview(Long reviewId) {
-        if (reviewRepository.existsById(reviewId)) {
-            reviewRepository.deleteById(reviewId);
-        } else {
+        if (!reviewRepository.existsById(reviewId)) {
             throw new RuntimeException("Review not found");
         }
+        reviewRepository.deleteById(reviewId);
     }
 
+    // -----------------------------------------------------
+    // 🔟 PROVIDER REPLY
+    // -----------------------------------------------------
     public ReviewResponseDTO addReply(Long reviewId, String reply) {
-    Review review = reviewRepository.findById(reviewId)
-            .orElseThrow(() -> new RuntimeException("Review not found"));
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Review not found"));
 
-    if (!review.getProvider().getId().equals(getCurrentUserId())) {
-        throw new RuntimeException("Unauthorized");
-    }
-
-    review.setReply(reply);
-    Review saved = reviewRepository.save(review);
-
-    return new ReviewResponseDTO(
-            saved.getId(),
-            saved.getBooking() != null ? saved.getBooking().getId() : null,
-            saved.getCustomer().getId(),
-            saved.getProvider().getId(),
-            saved.getService().getId(),
-            saved.getRating(),
-            saved.getComment(),
-            saved.getReply()
-    );
-
-    
-}
-
-
-
-
-
-
-    /**
-     * Helper method to get the currently logged-in user's ID
-     */
-    private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getName() == null) {
-            throw new RuntimeException("No authenticated user found");
+        if (!review.getProvider().getId().equals(getCurrentUserId())) {
+            throw new RuntimeException("Unauthorized");
         }
 
-        // Assuming username is unique and stored in authentication.getName()
-        return userRepository.findByName(authentication.getName())
+        review.setReply(reply);
+        Review saved = reviewRepository.save(review);
+
+        return mapToDTO(saved);
+    }
+
+    // -----------------------------------------------------
+    // 1️⃣1️⃣ CURRENT USER ID
+    // -----------------------------------------------------
+    private Long getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) throw new RuntimeException("Not authenticated");
+        return userRepository.findByName(auth.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"))
                 .getId();
     }
 
-
+    // -----------------------------------------------------
+    // 1️⃣2️⃣ REVIEW BY BOOKING ID
+    // -----------------------------------------------------
     public Optional<Review> getReviewByBookingId(Long bookingId) {
         return reviewRepository.findByBookingId(bookingId);
     }
-    
-
 }

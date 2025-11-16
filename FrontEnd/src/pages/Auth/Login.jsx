@@ -9,7 +9,9 @@ import {
 } from "react-icons/hi";
 import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from "react-icons/fa";
 import { userContext } from "../../content/Userprovider";
-import { login } from "../../services/api";
+import { login ,getProviderDocuments,getMyProfile} from "../../services/api";
+import tools from "../../images/tools.png";
+
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -21,78 +23,114 @@ export default function Login() {
   const navigate = useNavigate();
   const { UpdateUser } = useContext(userContext);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+ const handleLogin = async (e) => {
+  e.preventDefault();
 
-    // basic checks
-    if (!email || !password) {
-      setError("Please fill in all fields.");
-      return;
-    }
+  if (!email || !password) {
+    setError("Please fill in all fields.");
+    return;
+  }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    } else {
-      setError("");
-    }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    setError("Please enter a valid email address.");
+    return;
+  }
 
-    setError("");
-    setLoading(true);
+  setLoading(true);
+  setError("");
 
-    try {
-      const res = await login({ email, password });
-      const { token, role, verified, message, userId } = res.data;
+  try {
+    // 1️⃣ Login API
+    const res = await login({ email, password });
+    const { token, role, verified, message, userId } = res.data;
 
-      if (role === "PROVIDER" && verified === false) {
+    // 2️⃣ Save token & update context
+    localStorage.setItem("token", token);
+    UpdateUser({ email, role, userId, verified });
+
+    // 3️⃣ PROVIDER-specific checks
+    if (role === "PROVIDER") {
+      // Get provider profile
+      const userRes = await getMyProfile();
+      const providerId = userRes.data.id;
+
+      // Fetch documents for this provider
+      const providerDocsRes = await getProviderDocuments(providerId);
+      const providerDocs = Array.isArray(providerDocsRes.data)
+        ? providerDocsRes.data
+        : [];
+
+      console.log("Provider documents:", providerDocs);
+
+      // Check rejected documents
+      const rejectedDoc = providerDocs.find(doc => doc.rejected);
+      if (rejectedDoc) {
         setError(
-          message ||
-            "Your provider account is pending admin verification. Please wait until approved."
+          `Message from admin: ${rejectedDoc.rejectionReason }. Account has been rejected `
         );
-        setLoading(false);
         return;
       }
 
-      localStorage.setItem("token", token);
-      const loggedInUser = { email, role, userId, verified };
-      UpdateUser(loggedInUser);
-
-      if (role === "PROVIDER") navigate("/provider-dashboard");
-      else if (role === "ADMIN") navigate("/admin-dashboard");
-      else if (role === "CUSTOMER") navigate("/customer-dashboard");
-      else navigate("/");
-    } catch (err) {
-      console.error("Login failed:", err);
-
-      const serverMsg = err?.response?.data?.message || "";
-
-      if (
-        serverMsg.toLowerCase().includes("invalid credentials") ||
-        err?.response?.status === 401
-      ) {
-        setError("Incorrect password. Please try again.");
-      } else if (
-        serverMsg.toLowerCase().includes("user not found") ||
-        serverMsg.toLowerCase().includes("email not found") ||
-        err?.response?.status === 404
-      ) {
-        setError("Email does not exist. Please sign up first.");
-      } else {
-        setError("Unable to login. Please check your network and try again.");
+      // Check verification status
+      if (!verified) {
+        setError(
+          "Your provider account is pending for admin verification. Please wait until approved."
+        );
+        return;
       }
-    } finally {
-      setLoading(false);
+
+      navigate("/provider-dashboard");
+      return;
     }
-  };
+
+    // 4️⃣ ADMIN
+    if (role === "ADMIN") {
+      navigate("/admin-dashboard");
+      return;
+    }
+
+    // 5️⃣ CUSTOMER
+    if (role === "CUSTOMER") {
+      navigate("/customer-dashboard");
+      return;
+    }
+
+    // 6️⃣ Fallback
+    navigate("/");
+
+  } catch (err) {
+    console.error("Login failed:", err);
+
+    const serverMsg = err?.response?.data?.message || "";
+
+    if (serverMsg.toLowerCase().includes("invalid credentials") || err?.response?.status === 401) {
+      setError("Incorrect password. Please try again.");
+    } else if (
+      serverMsg.toLowerCase().includes("user not found") ||
+      serverMsg.toLowerCase().includes("email not found") ||
+      err?.response?.status === 404
+    ) {
+      setError("Email does not exist. Please sign up first.");
+    } else {
+      setError("Unable to login. Please check your network and try again.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
+
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden">
       {/* Background */}
       <div
-        className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
-        style={{ backgroundImage: "url('/tools.jpeg')" }}
-      ></div>
+  className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
+  style={{ backgroundImage: `url(${tools})` }}
+></div>
       <div className="absolute inset-0 bg-black/40"></div>
 
       {/* Logo */}

@@ -5,6 +5,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "chat_notifications")
 @Data
@@ -17,13 +19,16 @@ public class ChatNotification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "sender_id", nullable = false)
-    private User sender;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+@JoinColumn(name = "sender_id", nullable = false)
+@JsonIgnore
+private User sender;
 
-    @ManyToOne
-    @JoinColumn(name = "receiver_id", nullable = false)
-    private User receiver;
+@ManyToOne(fetch = FetchType.LAZY, optional = false)
+@JoinColumn(name = "receiver_id", nullable = false)
+@JsonIgnore
+private User receiver;
+
 
     @Column(nullable = false)
     private String messageContent;

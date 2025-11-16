@@ -10,13 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@changey/react-leaflet-markercluster": "^4.0.0-rc1",
     "@heroicons/react": "^2.2.0",
     "@react-google-maps/api": "^2.20.7",
     "@stomp/stompjs": "^7.2.1",
     "@tailwindcss/vite": "^4.1.13",
     "axios": "^1.12.2",
     "framer-motion": "^12.23.24",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
     "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "react": "^19.1.1",
     "react-confetti": "^6.4.0",
     "react-dom": "^19.1.1",

@@ -68,7 +68,7 @@ function UserCard({ user, users, setUsers }) {
       await deleteUser(user.id);
       setUsers(users.filter((u) => u.id !== user.id));
     } catch (err) {
-      console.error(err);
+      console.log(err.response.data);
       alert("Failed to delete user.");
     }
   };

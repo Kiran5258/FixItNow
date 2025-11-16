@@ -23,10 +23,17 @@ public class Document {
     private String fileType;
     private String fileUrl;
     private LocalDateTime uploadedAt = LocalDateTime.now();
+
     private boolean approved = false;
+
+    // 🆕 Add rejection tracking fields
+    private boolean rejected = false;
+
+    @Column(length = 255)
+    private String rejectionReason; // Optional but useful for admins
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "provider_id")
-    @JsonIgnore // ⬅️ ignore this to avoid proxy serialization
+    @JsonIgnore
     private User provider;
 }

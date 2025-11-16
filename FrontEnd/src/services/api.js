@@ -67,6 +67,7 @@ export const deleteUser = (id) => API.delete(`/users/${id}`);
 export const getUserByEmail = (email) => API.get(`/users/email/${email}`);
 // 👤 Get all customers (for providers or admin)
 export const getCustomers = () => API.get("/users/customers");
+export const getProviderById = (providerId) => API.get(`/users/id/${providerId}`);
 
 
 
@@ -142,7 +143,13 @@ export const verifyProvider = (providerId) => {
 export const getAllDocuments = () => API.get("/documents/all");
 export const approveDocument = (id) => API.put(`/documents/approve/${id}`);
 export const deleteDocument = (id) => API.delete(`/documents/${id}`);
-export const rejectDocument = (id) => API.put(`/documents/reject/${id}`);
+
+// ❌ Admin rejects document (with optional reason)
+export const rejectDocument = (id, reason) =>
+  API.put(`/documents/reject/${id}`, null, {
+    params: { reason },
+  });
+
 
 
 //
@@ -177,6 +184,13 @@ export const updateReportStatus = (reportId, status) =>
 
 // 🗑️ Delete a report (Admin)
 export const deleteReport = (reportId) => API.delete(`/reports/${reportId}`);
+
+export const getProviderDocuments = (providerId) => {
+  const token = localStorage.getItem("token");
+  return API.get(`/documents/provider/${providerId}`)
+   
+};
+
 
 //
 // =====================

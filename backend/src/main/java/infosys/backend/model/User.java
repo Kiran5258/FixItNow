@@ -5,19 +5,20 @@ import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import infosys.backend.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity
-@Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = "services")
+@ToString(exclude = {"services", "adminLogs", "documents"})
+@Entity
+@Table(name = "users")
 public class User {
 
     @Id
@@ -41,11 +42,19 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    @OneToMany(mappedBy = "provider", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.EAGER)
-    @JsonManagedReference
-    private List<ServiceProvider> services;
+    @OneToMany(mappedBy = "provider", fetch = FetchType.LAZY)
+@JsonIgnore
+private List<ServiceProvider> services;
+
 
     private boolean isVerified = false;
+
+    @OneToMany(mappedBy = "admin", cascade = CascadeType.REMOVE, orphanRemoval = true)
+@JsonIgnore
+private List<AdminLog> adminLogs;
+@OneToMany(mappedBy = "provider", cascade = CascadeType.REMOVE, orphanRemoval = true)
+@JsonIgnore
+private List<Document> documents;
 
 
 }
