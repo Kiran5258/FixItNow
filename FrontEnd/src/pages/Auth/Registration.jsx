@@ -10,6 +10,8 @@ import {
 } from "react-icons/hi";
 import { FaHome, FaWrench } from "react-icons/fa";
 import { register } from "../../services/api";
+import tools from "../../images/tools.png";
+
 
 export default function Registration() {
   const [fullname, setFullname] = useState("");
@@ -148,10 +150,15 @@ export default function Registration() {
         const formData = new FormData();
         formData.append("file", document);
 
-        await fetch(
-          `http://localhost:8080/api/auth/upload-documents/${userId}`,
-          { method: "POST", body: formData }
-        );
+       await fetch(
+  `${import.meta.env.VITE_API_URL}/api/auth/upload-documents/${userId}`,
+  {
+    method: "POST",
+    body: formData,
+  }
+);
+
+
       }
 
       navigate("/login");
@@ -166,9 +173,9 @@ export default function Registration() {
     <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden py-16">
       {/* Background (unchanged) */}
       <div
-        className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
-        style={{ backgroundImage: "url('/tools.jpeg')" }}
-      ></div>
+  className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
+  style={{ backgroundImage: `url(${tools})` }}
+></div>
       <div className="absolute inset-0 bg-black/50"></div>
 
       {/* Logo */}

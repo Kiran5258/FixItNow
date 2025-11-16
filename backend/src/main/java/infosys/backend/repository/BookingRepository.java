@@ -18,6 +18,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByCustomer(User customer);
     List<Booking> findByProvider(User provider);
 
+    List<Booking> findByCustomerId(Long customerId);
+
+List<Booking> findByProviderId(Long providerId);
+
+
     @Transactional
     @Modifying
     @Query("DELETE FROM Booking b WHERE b.service.id = :serviceId")

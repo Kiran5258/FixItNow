@@ -1,5 +1,6 @@
 package infosys.backend.config;
 
+import infosys.backend.dto.AuthUser;
 import infosys.backend.model.User;
 import infosys.backend.repository.UserRepository;
 import infosys.backend.security.JwtUtil;
@@ -15,7 +16,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -26,7 +26,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+                                    FilterChain filterChain)
+            throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
         String token = null;
@@ -45,20 +46,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             User user = userRepository.findByEmail(email).orElse(null);
 
             if (user != null && jwtUtil.validateToken(token, user.getEmail())) {
-                // ✅ Normalize role to uppercase and add ROLE_ prefix
-                String roleName = "ROLE_" + user.getRole().name().toUpperCase();
+
+                AuthUser authUser = new AuthUser(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getRole().name()
+                );
+
+                String roleName = "ROLE_" + user.getRole().name();
+
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
-                                user,
+                                authUser,
                                 null,
                                 List.of(() -> roleName)
                         );
 
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                // 🔹 Log for debugging
                 logger.info("Authenticated user: " + email + ", role: " + roleName);
-                logger.info("Authorities: " + SecurityContextHolder.getContext().getAuthentication().getAuthorities());
             }
         }
 

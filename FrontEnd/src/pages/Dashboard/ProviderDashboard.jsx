@@ -207,7 +207,7 @@ const [token] = useState(localStorage.getItem("token")); // Removed setToken - n
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    navigate("/login");
+    navigate("/");
   };
 
    const handleSaveProfile = async () => {
@@ -1201,7 +1201,7 @@ function ReviewsTab({ reviews }) {
         {allReviews.map((r) => (
           <div key={r.id} className="bg-white border rounded-xl p-4 shadow flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <span className="font-semibold">{r.customer?.name || "Anonymous"}</span>
+              <span className="font-semibold">{r.customerName || "Anonymous"}</span>
               <span className="text-yellow-400">{'★'.repeat(r.rating) + '☆'.repeat(5 - r.rating)}</span>
             </div>
             <p className="text-gray-700">{r.comment}</p>

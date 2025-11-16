@@ -67,6 +67,7 @@ function ClusterLayer({ markers }) {
     });
 
     markers.forEach((mk) => {
+      
       const icon = createIcon(mk.status);
       const marker = L.marker([mk.position.lat, mk.position.lng], { icon });
 
@@ -147,38 +148,53 @@ export default function ServiceLocationMap({ bookings = [] }) {
 
   // Prepare markers based on customer location
   const markers = useMemo(() => {
-    const data = [];
+  const data = [];
 
-    bookings.forEach((b) => {
-      const rawLoc = (b?.customer?.location || "").trim().toLowerCase();
-      const normalized = rawLoc
-        .replace(/\s+/g, " ")
-        .replace(/tamil\s*nadu|india|district|city|,|-/gi, "")
-        .trim();
+  bookings.forEach((b) => {
+    const locationRaw = (b?.service?.location || "").trim().toLowerCase();
 
-      const coords =
-        coordinates[normalized] ||
-        Object.entries(coordinates).find(([key]) => normalized.includes(key))?.[1];
+    console.log(bookings)
 
-      if (!coords) return;
+    // Normalize text
+    const normalized = locationRaw
+      .replace(/\s+/g, " ")
+      .replace(/tamil\s*nadu|india|district|city|,|-/gi, "")
+      .trim();
 
-      data.push({
-        id: b.id,
-        position: coords,
-        provider: b.provider?.name || "Provider",
-        customer: b.customer?.name || "Customer",
-        customerLocation: b.customer?.location || "Unknown",
-        service: b.service?.category || "Service",
-        sub: b.service?.subcategory || "",
-        price: b.service?.price || 0,
-        date: b.bookingDate || "-",
-        status: b.status?.toUpperCase() || "UNKNOWN",
-      });
+    const coords =
+      coordinates[normalized] ||
+      Object.entries(coordinates).find(([key]) => normalized.includes(key))?.[1];
+
+    if (!coords) {
+      console.warn("⚠️ Location not found in coordinates:", normalized);
+      return;
+    }
+
+    data.push({
+      id: b.id,
+      position: coords,
+
+      // 🟩 FIXED → Extracting service info
+      service: b.service?.category || "Unknown",
+      sub: b.service?.subcategory || "",
+
+      // 🟩 FIXED → Extracting provider & customer
+      provider: b.provider?.name || b.providerName || "Unknown Provider",
+      customer: b.customer?.name || b.customerName || "Unknown Customer",
+
+      customerLocation: b.service?.location || "Unknown",
+      price: b.service?.price || 0,
+      date: b.bookingDate || "-",
+      status: b.status?.toUpperCase() || "UNKNOWN",
     });
+  });
 
-    console.log("✅ Total Markers:", data.length);
-    return data;
-  }, [bookings, coordinates]);
+  console.log("✅ Final Markers Processed:", data.length);
+  console.log("📌 Marker Data Preview:", data.slice(0, 5));
+
+  return data;
+}, [bookings, coordinates]);
+
 
   return (
     <div

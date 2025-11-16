@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
 @Table(name = "reviews")
 @Data
@@ -20,16 +23,22 @@ public class Review {
     @JoinColumn(name = "booking_id")
     private Booking booking; 
 
-    @ManyToOne
-    @JoinColumn(name = "customer_id", nullable = false)
-    private User customer;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+@JoinColumn(name = "customer_id", nullable = false)
+@JsonIgnoreProperties({"password", "roles"})
+private User customer;
 
-    @ManyToOne
-    @JoinColumn(name = "provider_id", nullable = false)
-    private User provider;
+@ManyToOne(fetch = FetchType.LAZY, optional = false)
+@JoinColumn(name = "provider_id", nullable = false)
+@JsonIgnoreProperties({"password", "roles"})
+private User provider;
+
+
+
 
     @ManyToOne
     @JoinColumn(name = "service_id", nullable = false)
+    @JsonIgnoreProperties({"provider", "reviews"})
     private ServiceProvider service;
 
     private Integer rating; // 1-5

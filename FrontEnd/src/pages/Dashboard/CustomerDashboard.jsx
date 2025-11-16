@@ -294,7 +294,7 @@ setServicesWithDistance(
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    navigate("/login");
+    navigate("/");
   };
 
   const handleSaveProfile = async (updatedData) => {

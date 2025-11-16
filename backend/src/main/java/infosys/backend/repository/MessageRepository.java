@@ -17,6 +17,10 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             User sender1, User receiver1, User sender2, User receiver2
     );
 
+      void deleteBySenderId(Long senderId);
+void deleteByReceiverId(Long receiverId);
+
+
     // Optional: fetch messages by booking/conversation ID if you add it later
      @Query("SELECT m FROM Message m " +
            "JOIN FETCH m.sender " +

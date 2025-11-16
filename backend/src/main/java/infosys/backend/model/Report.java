@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import infosys.backend.enums.TargetType;
 
 @Entity
@@ -22,9 +24,11 @@ public class Report {
 
     private Long targetId;
 
-    @ManyToOne
-    @JoinColumn(name = "reported_by")
-    private User reportedBy;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+@JoinColumn(name = "reported_by", nullable = false)
+@JsonIgnore
+private User reportedBy;
+
 
     private String reason;
     private String status = "PENDING"; // add this field

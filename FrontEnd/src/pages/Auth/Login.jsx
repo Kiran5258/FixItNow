@@ -10,6 +10,8 @@ import {
 import { FaHome, FaWrench, FaTools, FaBolt, FaShower } from "react-icons/fa";
 import { userContext } from "../../content/Userprovider";
 import { login ,getProviderDocuments,getMyProfile} from "../../services/api";
+import tools from "../../images/tools.png";
+
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -126,9 +128,9 @@ export default function Login() {
     <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden">
       {/* Background */}
       <div
-        className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
-        style={{ backgroundImage: "url('/tools.jpeg')" }}
-      ></div>
+  className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105"
+  style={{ backgroundImage: `url(${tools})` }}
+></div>
       <div className="absolute inset-0 bg-black/40"></div>
 
       {/* Logo */}
