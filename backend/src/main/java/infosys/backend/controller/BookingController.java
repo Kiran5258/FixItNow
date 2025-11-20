@@ -8,6 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import infosys.backend.dto.AuthUser;
 import infosys.backend.enums.BookingStatus;
 import infosys.backend.enums.Role;
 import infosys.backend.model.Booking;
@@ -81,7 +82,8 @@ public Booking verifyBookingByCustomer(@PathVariable Long bookingId) {
 // Get a single booking by ID (customer can only see their own bookings, provider/admin can see theirs)
 @PreAuthorize("hasRole('CUSTOMER') or hasRole('PROVIDER') or hasRole('ADMIN')")
 @GetMapping("/{bookingId}")
-public Booking getBookingById(@PathVariable Long bookingId, @AuthenticationPrincipal User user) {
+public Booking getBookingById(@PathVariable Long bookingId, @AuthenticationPrincipal AuthUser authUser) {
+    User user = userService.findByEmail(authUser.getEmail());
     Booking booking = bookingService.getBookingById(bookingId);
 
     // Customer can only access their own booking

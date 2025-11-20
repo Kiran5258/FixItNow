@@ -127,7 +127,7 @@ const DisputeManagement = () => {
                     {r.status}
                   </td>
                   <td className="p-3 border-b">
-                    {r.reportedBy?.name || "Unknown"}
+                    {r.reportedByName || "Unknown"}
                   </td>
                   <td className="p-3 border-b">
                     {new Date(r.createdAt).toLocaleString()}

@@ -1,5 +1,6 @@
 package infosys.backend.controller;
 
+import infosys.backend.dto.AuthUser;
 import infosys.backend.dto.MessageDTO;
 import infosys.backend.model.Message;
 import infosys.backend.model.User;
@@ -41,7 +42,10 @@ public ResponseEntity<MessageDTO> sendMessage(
 ) {
    User sender;
 if (principal instanceof UsernamePasswordAuthenticationToken) {
-    sender = (User) ((UsernamePasswordAuthenticationToken) principal).getPrincipal();
+    AuthUser authUser = (AuthUser) ((UsernamePasswordAuthenticationToken) principal).getPrincipal();
+    sender = userRepository.findByEmail(authUser.getEmail())
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
 } else {
     throw new RuntimeException("Unauthenticated user attempted to send message");
 }
@@ -64,7 +68,10 @@ public ResponseEntity<List<MessageDTO>> getMessagesWithUser(
 ) {
     User currentUser;
     if (principal instanceof UsernamePasswordAuthenticationToken) {
-        currentUser = (User) ((UsernamePasswordAuthenticationToken) principal).getPrincipal();
+       AuthUser authUser = (AuthUser) ((UsernamePasswordAuthenticationToken) principal).getPrincipal();
+     currentUser = userRepository.findByEmail(authUser.getEmail())
+        .orElseThrow(() -> new RuntimeException("User not found"));
+
     } else {
         throw new RuntimeException("Unauthenticated user");
     }

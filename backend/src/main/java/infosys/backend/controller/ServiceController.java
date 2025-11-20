@@ -1,5 +1,6 @@
 package infosys.backend.controller;
 
+import infosys.backend.dto.AuthUser;
 import infosys.backend.dto.ServiceRequest;
 import infosys.backend.dto.ServiceResponse;
 import infosys.backend.model.ServiceProvider;
@@ -31,8 +32,9 @@ public class ServiceController {
 
         // Get logged-in user's email from JWT
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        User user = (User) authentication.getPrincipal(); // cast to your User entity
-        String providerEmail = user.getEmail();
+AuthUser authUser = (AuthUser) authentication.getPrincipal();   // ✔ CORRECT
+String providerEmail = authUser.getEmail();                     // ✔ use email
+
 
         // 🔹 Debug log
         System.out.println("Trying to fetch provider with email: " + providerEmail);
