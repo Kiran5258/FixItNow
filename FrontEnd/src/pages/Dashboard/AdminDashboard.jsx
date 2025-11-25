@@ -9,6 +9,12 @@ import { FaUserCheck, FaExclamationTriangle } from "react-icons/fa";
 import {
   getAllUsers, getAllServices, getAllBookings,
 } from "../../services/api";
+import { getAllDocuments } from "../../services/api";
+import { getProviders } from "../../services/api";
+
+
+
+
 
 import ChatNotifications from "../../components/ChatNotifications";
 import DisputeManagement from "../admin/DisputeManagement";
@@ -34,6 +40,9 @@ export default function AdminDashboard() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
+  const [documents, setDocuments] = useState([]);
+const [verifiedProviders, setVerifiedProviders] = useState([]);
+
 
   // Restore active tab when navigating from notifications
   useEffect(() => {
@@ -66,6 +75,35 @@ export default function AdminDashboard() {
     }
     fetchUsers();
   }, []);
+  useEffect(() => {
+  async function fetchVerifiedProviders() {
+    try {
+      const res = await getProviders();
+      setVerifiedProviders(res.data);  // Backend returns VERIFIED providers only
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch verified providers");
+    }
+  }
+
+  fetchVerifiedProviders();
+}, []);
+
+
+  // Fetch Documents
+useEffect(() => {
+  async function fetchDocuments() {
+    try {
+      const res = await getAllDocuments();
+      setDocuments(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch documents");
+    }
+  }
+  fetchDocuments();
+}, []);
+
 
   // Fetch Services
   useEffect(() => {
@@ -107,6 +145,24 @@ export default function AdminDashboard() {
     localStorage.removeItem("token");
     navigate("/");
   };
+
+  // Extract provider IDs from users list
+const providerUsers = users.filter(
+  (u) => (u.role || "").toLowerCase() === "provider"
+);
+
+
+// Providers with documents waiting for approval
+const pendingProviders = providerUsers.filter((provider) =>
+  documents.some(
+    (doc) =>
+      doc.providerId === provider.id &&
+      doc.approved === false &&
+      doc.rejected === false
+  )
+);
+
+
 
   const sidebarItems = [
     { name: "Home", icon: <FiHome className="text-white" />, key: "home" },
@@ -174,20 +230,18 @@ export default function AdminDashboard() {
                   value={bookings.length}
                   icon={<BiClipboard style={{ color: rustBrown }} />}
                 />
-                <MetricCard
-                  title="Verified Providers"
-                  value={
-                    users.filter(
-                      (u) => (u.role || "").toLowerCase() === "provider"
-                    ).length
-                  }
-                  icon={<FaUserCheck style={{ color: rustBrown }} />}
-                />
-                <MetricCard
-                  title="Pending Approvals"
-                  value={0}
-                  icon={<MdAdminPanelSettings style={{ color: rustBrown }} />}
-                />
+               <MetricCard
+  title="Verified Providers"
+  value={verifiedProviders.length}
+  icon={<FaUserCheck style={{ color: rustBrown }} />}
+/>
+
+<MetricCard
+  title="Pending Approvals"
+  value={pendingProviders.length}
+  icon={<MdAdminPanelSettings style={{ color: rustBrown }} />}
+/>
+
               </div>
 
               {/* 🧾 Main Dashboard Panels */}
