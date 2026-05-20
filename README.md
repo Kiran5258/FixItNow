@@ -95,4 +95,4 @@ All secure routes are protected via JWT. When a user logs in, they receive a JWT
 google drive link: https://drive.google.com/drive/folders/18PM4CaV7wgzki8L69XPp-OdZHZ_SsrUj?usp=sharing
 
 ## Live Deployment
-Frontend: fixitnow-frontend.onrender.com
+Frontend: https://fixitnow-frontend.onrender.com
